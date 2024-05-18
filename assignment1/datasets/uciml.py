@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 
-from torch import is_tensor
+from torch import is_tensor, Tensor
 from torch.utils.data import Dataset
 
 class AdultDataset(Dataset):
@@ -13,7 +13,7 @@ class AdultDataset(Dataset):
         Load dataset from preprocessed pickle files
         """
         filename = 'uciml_adult_test.pkl' if mode == 'test' else 'uciml_adult_train.pkl'
-        self.data = pd.read_pickle(os.path.join(data_dir, filename))
+        self.data = Tensor(pd.read_pickle(os.path.join(data_dir, filename)).values)
         self.transforms = transforms
 
     def __len__(self):
@@ -22,13 +22,15 @@ class AdultDataset(Dataset):
     def __getitem__(self, index):
         if is_tensor(index):
             index = index.tolist()
-        
-        sample = self.data.iloc[index]
+
+        sample = self.data[index, :-1]
+        # Label is base-1, convert to base-0
+        label = self.data[index, -1] - 1
 
         if self.transforms:
             sample = self.transforms(sample)
 
-        return sample
+        return (sample, label)
 
 # class PhishingDataset:
 #     def __init__(self) -> None:
