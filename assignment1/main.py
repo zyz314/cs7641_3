@@ -1,14 +1,9 @@
-from ucimlrepo import fetch_ucirepo 
-  
-# fetch dataset 
-adult = fetch_ucirepo(id=2) 
-  
-# data (as pandas dataframes) 
-X = adult.data.features 
-y = adult.data.targets 
-  
-# metadata 
-print(adult.metadata) 
-  
-# variable information 
-print(adult.variables) 
+from datasets.uciml import AdultDataset
+
+def main():
+    dataset = AdultDataset()
+    for i, sample in enumerate(dataset):
+        print(i, sample)
+
+if __name__ == '__main__':
+    main()
