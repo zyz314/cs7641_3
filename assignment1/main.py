@@ -1,7 +1,7 @@
-from datasets.uciml import AdultDataset
+from datasets.uciml import AdultDataset, DryBeanDataset
 
 def main():
-    dataset = AdultDataset()
+    dataset = DryBeanDataset()
     for i, (x, y) in enumerate(dataset):
         print(i, x, y)
 

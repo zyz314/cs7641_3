@@ -32,11 +32,30 @@ class AdultDataset(Dataset):
 
         return (sample, label)
 
-# class PhishingDataset:
-#     def __init__(self) -> None:
-#         self.data_frame_ = None
+
+class DryBeanDataset(Dataset):
+    """
+    Class representing the Dry Bean dataset from UC Irvine ML archive
+    """
+    def __init__(self, data_dir='data', mode='test', transforms = None):
+        """
+        Load dataset from preprocessed pickle files
+        """
+        filename = 'uciml_drybean.pkl'
+        self.data = Tensor(pd.read_pickle(os.path.join(data_dir, filename)).values)
+        self.transforms = transforms
+
+    def __len__(self):
+        return self.data.shape[0]
     
-#     def fetch(self) -> None:
-#         self.data_frame_ = fetch_ucirepo(id=967)
+    def __getitem__(self, index):
+        if is_tensor(index):
+            index = index.tolist()
 
+        sample = self.data[index, :-1]
+        label = self.data[index, -1]
 
+        if self.transforms:
+            sample = self.transforms(sample)
+
+        return (sample, label)

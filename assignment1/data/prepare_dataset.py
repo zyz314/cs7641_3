@@ -1,9 +1,6 @@
 import pandas as pd
 import numpy as np
 
-# data = pd.read_csv('data/PhiUSIIL_Phishing_URL_Dataset.csv')
-# data.to_pickle('data/uciml_phishing.pkl')
-
 def prepare_uciml_adult():
     """
     Prepare the Adult dataset from UC Irvine ML archive
@@ -25,5 +22,23 @@ def prepare_uciml_adult():
 
         data.to_pickle(output_file)
 
+
+def prepare_uciml_drybean():
+    """
+    Prepare the Dry Bean dataset from UC Irvine ML archive
+    """
+    inputs = ['data/DryBeanDataset/Dry_Bean_Dataset.xlsx']
+    outputs = ['data/uciml_drybean.pkl']
+
+    for input_file, output_file in zip(inputs, outputs):
+        data = pd.read_excel(input_file, skiprows=1, header=None)
+
+        uniques = dict([(val, idx) for idx, val in enumerate(data.iloc[:, -1].unique())])
+        data = data.replace(uniques)
+
+        data.to_pickle(output_file)
+
+
 if __name__ == '__main__':
     prepare_uciml_adult()
+    prepare_uciml_drybean()
