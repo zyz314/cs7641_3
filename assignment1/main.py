@@ -93,18 +93,20 @@ def eval_model(model : nn.Module, dataloader : DataLoader, criterion : nn.Module
 def train_mlp_drybean():
     """
     """
-    lr = 5e-3
+    lr = 2e-3
     regularization = 1e-4
+    hidden_dim = 32
 
     n_epochs = 50
     batch_size = 32
     
-    dataset = DryBeanDataset(transforms=nn.functional.normalize)
-    model = TwoLayerMLP(dataset.get_num_features(), dataset.get_num_classes(), 25)
+    # dataset = DryBeanDataset(transforms=nn.functional.normalize)
+    dataset = DryBeanDataset()
+    model = TwoLayerMLP(dataset.get_num_features(), dataset.get_num_classes(), hidden_dim)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = Adam(model.parameters(), lr=lr, weight_decay=regularization)
-    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=5)
+    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=1)
 
     train_dataset, val_dataset, test_dataset = random_split(dataset, [0.8, 0.1, 0.1])
     train_set = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
