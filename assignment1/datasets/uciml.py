@@ -42,7 +42,9 @@ class DryBeanDataset(Dataset):
         """
         filename = 'uciml_drybean.pkl'
         self.data = Tensor(pd.read_pickle(os.path.join(data_dir, filename)).values)
-        self.transforms = transforms
+        if transforms:
+            temp = transforms(self.data[:, :-1])
+            self.data[:, :-1] = temp
 
     def __len__(self):
         return self.data.shape[0]
@@ -53,8 +55,5 @@ class DryBeanDataset(Dataset):
 
         sample = self.data[index, :-1]
         label = self.data[index, -1].long()
-
-        if self.transforms:
-            sample = self.transforms(sample)
 
         return (sample, label)

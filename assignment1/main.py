@@ -6,67 +6,127 @@ import numpy as np
 
 import torch
 import torch.nn as nn
+from torch.nn import CrossEntropyLoss
 from torch.utils.data import Dataset, DataLoader, random_split
-from torch.optim import SGD
+from torch.optim import SGD, Optimizer
 from torch.optim.lr_scheduler import ReduceLROnPlateau, ExponentialLR
-from torch.autograd import Variable
 
 import matplotlib.pyplot as plt
 
 
-def train_model(model : nn.Module, dataset : Dataset):
+def plot_training_curves(train_losses, train_accuracies, eval_losses, eval_accuracies, plot_name = 'loss_curves.png'):
+    """
+    Plot the training loss and accuracy curves
+    """
+    plt.subplot(1, 2, 1)
+    plt.plot(range(len(train_losses)), train_losses, label='train_loss')
+    plt.plot(range(len(eval_losses)), eval_losses, label='eval_loss')
+    plt.xlabel('Epoch')
+    plt.legend()
+    plt.title('Loss')
+    plt.subplot(1, 2, 2)
+    plt.plot(range(len(train_accuracies)), train_accuracies, label='train_acc')
+    plt.plot(range(len(eval_accuracies)), eval_accuracies, label='eval_acc')
+    plt.xlabel('Epoch')
+    plt.legend()
+    plt.title('Accuracy')
+    plt.savefig(plot_name)
+
+
+def calculate_accuracy(pred : torch.Tensor, target : torch.LongTensor) -> float:
+    """
+    Calculate accuracy of prediction
+    """
+    return (torch.sum(torch.argmax(pred, dim=1) == target) / target.shape[0]).item()
+
+
+def train_model(model : nn.Module, dataloader : DataLoader, criterion : nn.Module, optimizer : Optimizer, device : torch.device) -> tuple:
     """
     """
-    n_epochs = 30
+    temp_losses = []
+    temp_accs = []
+
+    model.train()
+    for data in dataloader:
+        source = data[0].to(device)
+        target = data[1].to(device)
+
+        optimizer.zero_grad()
+
+        output = model(source)
+        loss = criterion(output, target)
+
+        loss.backward()
+        # nn.utils.clip_grad_norm_(model.parameters(), 0.5)
+
+        optimizer.step()
+
+        temp_losses.append(loss.item())
+        temp_accs.append(calculate_accuracy(output, target))
+    
+    return (temp_losses, temp_accs)
+
+
+def eval_model(model : nn.Module, dataloader : DataLoader, criterion : nn.Module, device : torch.device) -> tuple:
+    """
+    """
+    temp_losses = []
+    temp_accs = []
+
+    model.eval()
+    with torch.no_grad():
+        for data in dataloader:
+            source = data[0].to(device)
+            target = data[1].to(device)
+
+            output = model(source)
+            loss = criterion(output, target)
+
+            temp_losses.append(loss.item())
+            temp_accs.append(calculate_accuracy(output, target))
+
+    return (temp_losses, temp_accs)
+
+
+def train_mlp_drybean():
+    """
+    """
+    lr = 0.1
+    momentum = 0.8
+    regularization = 0.9
+
+    n_epochs = 50
+    batch_size = 64
+
+    model = SimpleMLP(16, 7)
+    dataset = DryBeanDataset(transforms=nn.functional.normalize)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = SGD(model.parameters(), lr=1e-3, momentum=0.9, weight_decay=0.01)
+    optimizer = SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=regularization)
     lr_scheduler = ReduceLROnPlateau(optimizer, mode='max', patience=5)
 
-    train_dataset, val_dataset = random_split(dataset, [0.8, 0.2])
-    test_set = DataLoader(train_dataset, batch_size=64, shuffle=True)
-    val_set = DataLoader(val_dataset, batch_size=64, shuffle=True)
+    train_dataset, val_dataset, test_dataset = random_split(dataset, [0.8, 0.1, 0.1])
+    train_set = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_set = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
+    test_set = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
     train_losses = []
     train_accuracies = []
     eval_losses = []
     eval_accuracies = []
 
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    model.to(device)
+
     with tqdm(total=n_epochs) as pbar:
         for epoch in range(n_epochs):
-            temp_losses = []
-            temp_accs = []
-
-            # Train
-            model.train()
-            for inputs, target in test_set:
-                input_var = Variable(inputs, requires_grad=True)
-
-                optimizer.zero_grad()
-
-                output = model(input_var)
-                loss = criterion(output, target)
-
-                loss.backward()
-                optimizer.step()
-
-                temp_losses.append(loss.item())
-                temp_accs.append((torch.sum(output.argmax(dim=1) == target) / inputs.shape[0]).item())
+            temp_losses, temp_accs = train_model(model, train_set, criterion, optimizer, device)
             train_losses.append(np.mean(temp_losses))
             train_accuracies.append(np.mean(temp_accs))
 
-            # Validation
-            model.eval()
-            with torch.no_grad():
-                temp_losses = []
-                temp_accs = []
-                for inputs, target in val_set:
-                    output = model(inputs)
-                    loss = criterion(output, target)
-                    temp_losses.append(loss.item())
-                    temp_accs.append((torch.sum(output.argmax(dim=1) == target) / inputs.shape[0]).item())
-                eval_losses.append(np.mean(temp_losses))
-                eval_accuracies.append(np.mean(temp_accs))
+            temp_losses, temp_accs = eval_model(model, val_set, criterion, device)
+            eval_losses.append(np.mean(temp_losses))
+            eval_accuracies.append(np.mean(temp_accs))
 
             lr_scheduler.step(eval_accuracies[-1])
 
@@ -74,26 +134,13 @@ def train_model(model : nn.Module, dataset : Dataset):
                              eval_loss=eval_losses[-1], train_acc=train_accuracies[-1], eval_acc=eval_accuracies[-1])
             pbar.update()
 
-    plt.subplot(1, 2, 1)
-    plt.plot(range(n_epochs - 1), train_losses[1:], label='train_loss')
-    plt.plot(range(n_epochs - 1), eval_losses[1:], label='eval_loss')
-    plt.xlabel('Epoch')
-    plt.legend()
-    plt.title('Loss')
-    plt.subplot(1, 2, 2)
-    plt.plot(range(n_epochs - 1), train_accuracies[1:], label='train_acc')
-    plt.plot(range(n_epochs - 1), eval_accuracies[1:], label='eval_acc')
-    plt.xlabel('Epoch')
-    plt.legend()
-    plt.title('Accuracy')
-    plt.savefig('loss_curves.png')
+    temp_losses, temp_accs = eval_model(model, test_set, criterion, device)
+    print(f'Final test loss {np.mean(temp_losses)} and accuracy {np.mean(temp_accs)}')
+    plot_training_curves(train_losses, train_accuracies, eval_losses, eval_accuracies)
 
 
 def main():
-    model = SimpleMLP(16, 7)
-    dataset = DryBeanDataset()
-
-    train_model(model, dataset)
+    train_mlp_drybean()
 
 if __name__ == '__main__':
     main()
