@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 
-from torch import is_tensor, Tensor
+from torch import is_tensor, Tensor, LongTensor
 from torch.utils.data import Dataset
 
 class AdultDataset(Dataset):
@@ -24,8 +24,7 @@ class AdultDataset(Dataset):
             index = index.tolist()
 
         sample = self.data[index, :-1]
-        # Label is base-1, convert to base-0
-        label = self.data[index, -1] - 1
+        label = self.data[index, -1].long()
 
         if self.transforms:
             sample = self.transforms(sample)
@@ -53,7 +52,7 @@ class DryBeanDataset(Dataset):
             index = index.tolist()
 
         sample = self.data[index, :-1]
-        label = self.data[index, -1]
+        label = self.data[index, -1].long()
 
         if self.transforms:
             sample = self.transforms(sample)
