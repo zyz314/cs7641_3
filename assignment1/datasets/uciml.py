@@ -46,6 +46,12 @@ class DryBeanDataset(Dataset):
             temp = transforms(self.data[:, :-1])
             self.data[:, :-1] = temp
 
+    def get_num_classes(self):
+        return 7
+    
+    def get_num_features(self):
+        return 16
+
     def __len__(self):
         return self.data.shape[0]
     

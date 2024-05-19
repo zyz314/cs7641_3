@@ -1,14 +1,16 @@
 import torch.utils
 from datasets.uciml import AdultDataset, DryBeanDataset
-from models.mlp import SimpleMLP
+from models.mlp import TwoLayerMLP
 from tqdm import tqdm
 import numpy as np
+import copy
+import os
 
 import torch
 import torch.nn as nn
 from torch.nn import CrossEntropyLoss
 from torch.utils.data import Dataset, DataLoader, random_split
-from torch.optim import SGD, Optimizer
+from torch.optim import SGD, Adam, Optimizer
 from torch.optim.lr_scheduler import ReduceLROnPlateau, ExponentialLR
 
 import matplotlib.pyplot as plt
@@ -52,12 +54,12 @@ def train_model(model : nn.Module, dataloader : DataLoader, criterion : nn.Modul
         target = data[1].to(device)
 
         optimizer.zero_grad()
+        model.zero_grad()
 
         output = model(source)
         loss = criterion(output, target)
 
         loss.backward()
-        # nn.utils.clip_grad_norm_(model.parameters(), 0.5)
 
         optimizer.step()
 
@@ -91,19 +93,18 @@ def eval_model(model : nn.Module, dataloader : DataLoader, criterion : nn.Module
 def train_mlp_drybean():
     """
     """
-    lr = 0.1
-    momentum = 0.8
-    regularization = 0.9
+    lr = 5e-3
+    regularization = 1e-4
 
     n_epochs = 50
-    batch_size = 64
-
-    model = SimpleMLP(16, 7)
+    batch_size = 32
+    
     dataset = DryBeanDataset(transforms=nn.functional.normalize)
+    model = TwoLayerMLP(dataset.get_num_features(), dataset.get_num_classes(), 25)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=regularization)
-    lr_scheduler = ReduceLROnPlateau(optimizer, mode='max', patience=5)
+    optimizer = Adam(model.parameters(), lr=lr, weight_decay=regularization)
+    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=5)
 
     train_dataset, val_dataset, test_dataset = random_split(dataset, [0.8, 0.1, 0.1])
     train_set = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -118,6 +119,9 @@ def train_mlp_drybean():
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     model.to(device)
 
+    best_acc = 0.
+    best_model = None
+
     with tqdm(total=n_epochs) as pbar:
         for epoch in range(n_epochs):
             temp_losses, temp_accs = train_model(model, train_set, criterion, optimizer, device)
@@ -128,19 +132,29 @@ def train_mlp_drybean():
             eval_losses.append(np.mean(temp_losses))
             eval_accuracies.append(np.mean(temp_accs))
 
-            lr_scheduler.step(eval_accuracies[-1])
+            lr_scheduler.step(train_losses[-1])
+            
+            if eval_accuracies[-1] > best_acc:
+                best_acc = eval_accuracies[-1]
+                best_model = copy.deepcopy(model)
 
             pbar.set_postfix(lr = optimizer.param_groups[0]['lr'], train_loss=train_losses[-1],
                              eval_loss=eval_losses[-1], train_acc=train_accuracies[-1], eval_acc=eval_accuracies[-1])
             pbar.update()
 
-    temp_losses, temp_accs = eval_model(model, test_set, criterion, device)
+    temp_losses, temp_accs = eval_model(best_model, test_set, criterion, device)
     print(f'Final test loss {np.mean(temp_losses)} and accuracy {np.mean(temp_accs)}')
-    plot_training_curves(train_losses, train_accuracies, eval_losses, eval_accuracies)
+    return best_model, train_losses, train_accuracies, eval_losses, eval_accuracies
 
 
 def main():
-    train_mlp_drybean()
+    best_model, train_losses, train_accuracies, eval_losses, eval_accuracies = train_mlp_drybean()
+
+    if not os.path.exists('checkpoints'):
+        os.makedirs('checkpoints')
+    torch.save(best_model, os.path.join('checkpoints', 'drybean_best_model.pt'))
+    plot_training_curves(train_losses[1:], train_accuracies[1:], eval_losses[1:], eval_accuracies[1:],
+                         plot_name=os.path.join('checkpoints', 'drybean_loss_curves.png'))
 
 if __name__ == '__main__':
     main()
