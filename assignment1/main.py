@@ -98,7 +98,7 @@ def train_mlp_drybean():
     hidden_dim = 50
 
     n_epochs = 50
-    batch_size = 32
+    batch_size = 16
     
     # dataset = DryBeanDataset(transforms=nn.functional.normalize)
     dataset = DryBeanDataset()
@@ -149,7 +149,7 @@ def train_mlp_drybean():
     return best_model, train_losses, train_accuracies, eval_losses, eval_accuracies
 
 
-def set_seed(seed = 1234):
+def set_seed(seed = 123456789):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
