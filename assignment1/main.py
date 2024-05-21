@@ -14,7 +14,7 @@ from torch.optim import SGD, Adam, Optimizer
 from torch.optim.lr_scheduler import ReduceLROnPlateau, ExponentialLR
 
 import matplotlib.pyplot as plt
-
+import random
 
 def plot_training_curves(train_losses, train_accuracies, eval_losses, eval_accuracies, plot_name = 'loss_curves.png'):
     """
@@ -95,7 +95,7 @@ def train_mlp_drybean():
     """
     lr = 2e-3
     regularization = 1e-4
-    hidden_dim = 32
+    hidden_dim = 50
 
     n_epochs = 50
     batch_size = 32
@@ -149,7 +149,18 @@ def train_mlp_drybean():
     return best_model, train_losses, train_accuracies, eval_losses, eval_accuracies
 
 
+def set_seed(seed = 1234):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    # This environment variable is required for `use_deterministic_algorithms`
+    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+    torch.use_deterministic_algorithms(True)
+
+
 def main():
+    set_seed()
+
     best_model, train_losses, train_accuracies, eval_losses, eval_accuracies = train_mlp_drybean()
 
     if not os.path.exists('checkpoints'):
