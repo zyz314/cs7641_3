@@ -9,7 +9,10 @@ from torch.utils.data import random_split
 import matplotlib.pyplot as plt
 import random
 
+from tqdm import tqdm
 from sklearn.svm import LinearSVC, SVC
+from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import accuracy_score
 
 def plot_training_curves(train_losses, train_accuracies, eval_losses, eval_accuracies, plot_name = 'loss_curves.png'):
     """
@@ -42,20 +45,32 @@ def train_svm_drybean():
     dataset = DryBeanDataset()
     train_set, test_set = random_split(dataset, [0.8, 0.2])
 
-    model = LinearSVC()
+    model = SVC(kernel='linear')
+    skf = StratifiedKFold(n_splits=5, shuffle=True)
 
     X, y = train_set[:]
     X = X.numpy()
     y = y.numpy()
+    with tqdm(total=skf.get_n_splits(X, y)) as pbar:
+        temp_val_accs = []
+        for _, (train_index, test_index) in enumerate(skf.split(X, y)):
+            x_train, y_train = X[train_index], y[train_index]
+            model.fit(x_train, y_train)
 
-    model.fit(X, y)
-    
+            x_val, y_val = X[test_index], y[test_index]
+            pred = model.predict(x_val)
+            acc = accuracy_score(y_val, pred)
+            temp_val_accs.append(acc)
+
+            pbar.set_postfix(val_acc=np.mean(temp_val_accs))
+            pbar.update()
+
     X, y = test_set[:]
     X = X.numpy()
     y = y.numpy()
     pred = model.predict(X)
 
-    acc = calculate_accuracy(pred, y)
+    acc = accuracy_score(y, pred)
     print(f'Final test accuracy {np.mean(acc)}')
     return model
 
