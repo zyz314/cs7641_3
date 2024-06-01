@@ -11,9 +11,9 @@ import matplotlib.pyplot as plt
 import random
 
 from tqdm import tqdm
-from sklearn.svm import SVC, LinearSVC
 from sklearn.experimental import enable_halving_search_cv
-from sklearn.model_selection import StratifiedKFold, KFold, GridSearchCV, HalvingGridSearchCV, cross_val_score, StratifiedShuffleSplit
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import HalvingGridSearchCV, cross_val_score, StratifiedShuffleSplit
 
 def plot_training_curves(eval_accuracies, plot_name = 'loss_curves.png'):
     """
@@ -33,22 +33,22 @@ def calculate_accuracy(pred : np.ndarray, target : np.ndarray) -> float:
     return (np.sum(pred == target) / target.shape[0]).item()
 
 
-def train_svm_drybean(kernel='linear'):
+def train_knn_drybean():
     """
     """
-    n_epochs = 2
+    n_epochs = 3
 
     dataset = DryBeanDataset()
     train_set, test_set = random_split(dataset, [0.8, 0.2])
 
-    model = SVC(kernel=kernel)
+    model = KNeighborsClassifier(weights='distance')
     best_model = None
 
     X, y = train_set[:]
     X = X.numpy()
     y = y.numpy()
 
-    p_grid = {'C' : np.logspace(3, 4, 10), 'gamma' : np.logspace(-6, -4, 10)}
+    p_grid = {'n_neighbors' : np.arange(5, 10), 'leaf_size' : np.logspace(8, 12, 10, base=2, dtype=int)}
 
     # Arrays to store scores
     non_nested_scores = []
@@ -59,12 +59,12 @@ def train_svm_drybean(kernel='linear'):
         outer_cv = StratifiedShuffleSplit(n_splits=3, test_size=0.3, random_state=i)
 
         # Non_nested parameter search and scoring
-        clf = HalvingGridSearchCV(estimator=model, param_grid=p_grid, cv=outer_cv, scoring='accuracy', refit=True, n_jobs=3, verbose=2)
+        clf = HalvingGridSearchCV(estimator=model, param_grid=p_grid, cv=outer_cv, scoring='accuracy', refit=True, n_jobs=3)
         clf.fit(X, y)
         non_nested_scores.append(clf.best_score_)
 
         # Nested CV with parameter optimization
-        nested_clf = HalvingGridSearchCV(estimator=model, param_grid=p_grid, cv=inner_cv, scoring='accuracy', refit=True, n_jobs=3, verbose=2)
+        nested_clf = HalvingGridSearchCV(estimator=model, param_grid=p_grid, cv=inner_cv, scoring='accuracy', refit=True, n_jobs=3)
         nested_score = cross_val_score(nested_clf, X=X, y=y, cv=outer_cv)
 
         if len(nested_scores) == 0 or nested_score.mean() > nested_scores[-1]:
@@ -97,17 +97,11 @@ def main():
     if not os.path.exists('checkpoints'):
         os.makedirs('checkpoints')
 
-    # best_model, eval_accuracies, test_accuracy = train_svm_drybean(kernel='linear', class_weight='balanced')
-    # print(f'Final test accuracy for SVM with linear kernel {test_accuracy}')    
-    # with open(os.path.join('checkpoints', 'drybean_svm_linear_model.pkl'), 'wb') as f:
-    #     pickle.dump(best_model, f, protocol=5)
-    # plot_training_curves(eval_accuracies, plot_name=os.path.join('checkpoints', 'drybean_svm_linear_acc_curves.png'))
-
-    best_model, eval_accuracies, test_accuracy = train_svm_drybean(kernel='rbf')
-    print(f'Final test accuracy for SVM with rbf kernel {test_accuracy}')
-    with open(os.path.join('checkpoints', 'drybean_svm_rbf_model.pkl'), 'wb') as f:
+    best_model, eval_accuracies, test_accuracy = train_knn_drybean()
+    print(f'Final test accuracy for kNN {test_accuracy}')
+    with open(os.path.join('checkpoints', 'drybean_knn_model.pkl'), 'wb') as f:
         pickle.dump(best_model, f, protocol=5)
-    plot_training_curves(eval_accuracies, plot_name=os.path.join('checkpoints', 'drybean_svm_rbf_acc_curves.png'))
+    plot_training_curves(eval_accuracies, plot_name=os.path.join('checkpoints', 'drybean_knn_acc_curves.png'))
 
 
 if __name__ == '__main__':
