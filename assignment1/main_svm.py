@@ -41,7 +41,10 @@ def train_svm_drybean(kernel='linear', p_grid={}, n_splits=3, test_size=0.3, n_j
     dataset = DryBeanDataset()
     train_set, test_set = random_split(dataset, [0.8, 0.2])
 
-    model = SVC(kernel=kernel)
+    if kernel == 'linear':
+      model = LinearSVC(dual='auto')
+    else:
+      model = SVC(kernel=kernel)
     best_model = None
 
     X, y = train_set[:]
@@ -141,9 +144,11 @@ def main():
         os.makedirs('checkpoints')
 
     # best_model, eval_accuracies, test_accuracy = train_linear_svm_drybean()
-    best_model, eval_accuracies, test_accuracy = train_svm_drybean(kernel='linear', p_grid={'class_weight' : ['balanced'],
-                                                                                            'C' : np.logspace(3, 4, 10),
-                                                                                            'gamma' :  np.logspace(-6, -4, 10)}, verbose=2)
+    best_model, eval_accuracies, test_accuracy = train_svm_drybean(kernel='linear', p_grid={'class_weight' : [None, 'balanced'], 
+                                                                                            'dual' : ['auto'],
+                                                                                            'multi_class' : ['ovr', 'crammer_singer'],
+                                                                                            'max_iter' : [1000000],
+                                                                                            'C' : np.logspace(-2, 3, 10)}, verbose=2)
     print(f'Final test accuracy for SVM with linear kernel {test_accuracy}')
     with open(os.path.join('checkpoints', 'drybean_svm_linear_model.pkl'), 'wb') as f:
         pickle.dump(best_model, f, protocol=5)
