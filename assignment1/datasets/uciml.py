@@ -16,6 +16,12 @@ class AdultDataset(Dataset):
         self.data = Tensor(pd.read_pickle(os.path.join(data_dir, filename)).values)
         self.transforms = transforms
 
+    def get_num_classes(self):
+        return 2
+    
+    def get_num_features(self):
+        return 14
+
     def __len__(self):
         return self.data.shape[0]
     
