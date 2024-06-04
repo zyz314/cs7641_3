@@ -30,7 +30,7 @@ class AdultDataset(Dataset):
             index = index.tolist()
 
         sample = self.data[index, :-1]
-        label = self.data[index, -1].long()
+        label = self.data[index, -1].long() - 1
 
         if self.transforms:
             sample = self.transforms(sample)

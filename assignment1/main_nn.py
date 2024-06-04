@@ -152,9 +152,9 @@ def train_mlp_drybean():
 def train_mlp_adult():
     """
     """
-    lr = 2e-3
+    lr = 1e-3
     regularization = 1e-4
-    hidden_dim = 50
+    hidden_dim = 25
 
     n_epochs = 50
     batch_size = 16
@@ -166,7 +166,7 @@ def train_mlp_adult():
     optimizer = Adam(model.parameters(), lr=lr, weight_decay=regularization)
     lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=1)
 
-    train_dataset, val_dataset, test_dataset = random_split(dataset, [0.8, 0.1, 0.1])
+    train_dataset, val_dataset, test_dataset = random_split(dataset, [0.7, 0.1, 0.2])
     train_set = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_set = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
     test_set = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
