@@ -212,15 +212,21 @@ def main():
     #     pickle.dump(best_model, f, protocol=5)
     # plot_training_curves(eval_accuracies, plot_name=os.path.join('checkpoints', 'drybean_svm_rbf_acc_curves.png'))
 
-    best_model, eval_accuracies, test_accuracy = train_svm_adult(kernel='linear', p_grid={'class_weight' : [None, 'balanced'], 
-                                                                                          'dual' : ['auto'],
-                                                                                          'multi_class' : ['ovr', 'crammer_singer'],
-                                                                                          'max_iter' : [1000000],
-                                                                                          'C' : np.logspace(-2, 3, 10)}, verbose=2)
-    print(f'Final test accuracy for SVM with linear kernel {test_accuracy}')
-    with open(os.path.join('checkpoints', 'adult_svm_linear_model.pkl'), 'wb') as f:
+    # best_model, eval_accuracies, test_accuracy = train_svm_adult(kernel='linear', p_grid={'class_weight' : [None, 'balanced'], 
+    #                                                                                       'dual' : ['auto'],
+    #                                                                                       'multi_class' : ['ovr', 'crammer_singer'],
+    #                                                                                       'max_iter' : [1000000],
+    #                                                                                       'C' : np.logspace(-2, 3, 10)}, verbose=2)
+    # print(f'Final test accuracy for SVM with linear kernel {test_accuracy}')
+    # with open(os.path.join('checkpoints', 'adult_svm_linear_model.pkl'), 'wb') as f:
+    #     pickle.dump(best_model, f, protocol=5)
+    # plot_training_curves(eval_accuracies, plot_name=os.path.join('checkpoints', 'adult_svm_linear_acc_curves.png'))
+    
+    best_model, eval_accuracies, test_accuracy = train_svm_adult(kernel='rbf', p_grid={'C' : np.logspace(3, 4, 10), 'gamma' : np.logspace(-6, -4, 10)})
+    print(f'Final test accuracy for SVM with rbf kernel {test_accuracy}')
+    with open(os.path.join('checkpoints', 'adult_svm_rbf_model.pkl'), 'wb') as f:
         pickle.dump(best_model, f, protocol=5)
-    plot_training_curves(eval_accuracies, plot_name=os.path.join('checkpoints', 'adult_svm_linear_acc_curves.png'))
+    plot_training_curves(eval_accuracies, plot_name=os.path.join('checkpoints', 'adult_svm_rbf_acc_curves.png'))
 
 if __name__ == '__main__':
     main()

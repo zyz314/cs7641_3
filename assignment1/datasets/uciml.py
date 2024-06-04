@@ -13,7 +13,7 @@ class AdultDataset(Dataset):
         Load dataset from preprocessed pickle files
         """
         filename = 'uciml_adult_test.pkl' if mode == 'test' else 'uciml_adult_train.pkl'
-        self.data = Tensor(pd.read_pickle(os.path.join(data_dir, filename)).values)
+        self.data = Tensor(pd.read_pickle(os.path.join(data_dir, filename)).dropna().values)
         self.transforms = transforms
 
     def get_num_classes(self):
