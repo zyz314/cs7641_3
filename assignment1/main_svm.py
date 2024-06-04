@@ -128,6 +128,58 @@ def train_linear_svm_drybean(n_splits=3):
     return best_model, eval_accuracies, acc
 
 
+def train_svm_adult(kernel='linear', p_grid={}, n_splits=3, test_size=0.3, n_jobs=-1, verbose=0):
+    """
+    """
+    n_epochs = 2
+
+    dataset = AdultDataset()
+    train_set, test_set = random_split(dataset, [0.8, 0.2])
+
+    if kernel == 'linear':
+      model = LinearSVC(dual='auto')
+    else:
+      model = SVC(kernel=kernel)
+    best_model = None
+
+    X, y = train_set[:]
+    X = X.numpy()
+    y = y.numpy()
+
+    # Arrays to store scores
+    non_nested_scores = []
+    nested_scores = []
+
+    for i in tqdm(range(n_epochs)):
+        inner_cv = StratifiedShuffleSplit(n_splits=n_splits, test_size=test_size, random_state=i)
+        outer_cv = StratifiedShuffleSplit(n_splits=n_splits, test_size=test_size, random_state=i)
+
+        # Non_nested parameter search and scoring
+        clf = HalvingGridSearchCV(estimator=model, param_grid=p_grid, cv=outer_cv, min_resources='smallest',
+                                  scoring='accuracy', n_jobs=n_jobs, verbose=verbose)
+        clf.fit(X, y)
+        non_nested_scores.append(clf.best_score_)
+
+        # Nested CV with parameter optimization
+        nested_clf = HalvingGridSearchCV(estimator=model, param_grid=p_grid, cv=inner_cv, min_resources='smallest',
+                                         scoring='accuracy', n_jobs=n_jobs, verbose=verbose)
+        nested_score = cross_val_score(nested_clf, X=X, y=y, cv=outer_cv, n_jobs=n_jobs, verbose=verbose)
+
+        if len(nested_scores) == 0 or nested_score.mean() > nested_scores[-1]:
+            print(clf.best_params_, clf.best_score_)
+            best_model = copy.deepcopy(clf.best_estimator_)
+
+        nested_scores.append(nested_score.mean())
+
+    X, y = test_set[:]
+    X = X.numpy()
+    y = y.numpy()
+    pred = best_model.predict(X)
+
+    acc = calculate_accuracy(pred, y)
+    return best_model, nested_scores, acc
+
+
 def set_seed(seed = 123456789):
     random.seed(seed)
     np.random.seed(seed)
@@ -144,15 +196,15 @@ def main():
         os.makedirs('checkpoints')
 
     # best_model, eval_accuracies, test_accuracy = train_linear_svm_drybean()
-    best_model, eval_accuracies, test_accuracy = train_svm_drybean(kernel='linear', p_grid={'class_weight' : [None, 'balanced'], 
-                                                                                            'dual' : ['auto'],
-                                                                                            'multi_class' : ['ovr', 'crammer_singer'],
-                                                                                            'max_iter' : [1000000],
-                                                                                            'C' : np.logspace(-2, 3, 10)}, verbose=2)
-    print(f'Final test accuracy for SVM with linear kernel {test_accuracy}')
-    with open(os.path.join('checkpoints', 'drybean_svm_linear_model.pkl'), 'wb') as f:
-        pickle.dump(best_model, f, protocol=5)
-    plot_training_curves(eval_accuracies, plot_name=os.path.join('checkpoints', 'drybean_svm_linear_acc_curves.png'))
+    # best_model, eval_accuracies, test_accuracy = train_svm_drybean(kernel='linear', p_grid={'class_weight' : [None, 'balanced'], 
+    #                                                                                         'dual' : ['auto'],
+    #                                                                                         'multi_class' : ['ovr', 'crammer_singer'],
+    #                                                                                         'max_iter' : [1000000],
+    #                                                                                         'C' : np.logspace(-2, 3, 10)}, verbose=2)
+    # print(f'Final test accuracy for SVM with linear kernel {test_accuracy}')
+    # with open(os.path.join('checkpoints', 'drybean_svm_linear_model.pkl'), 'wb') as f:
+    #     pickle.dump(best_model, f, protocol=5)
+    # plot_training_curves(eval_accuracies, plot_name=os.path.join('checkpoints', 'drybean_svm_linear_acc_curves.png'))
 
     # best_model, eval_accuracies, test_accuracy = train_svm_drybean(kernel='rbf', p_grid={'C' : np.logspace(3, 4, 10), 'gamma' : np.logspace(-6, -4, 10)})
     # print(f'Final test accuracy for SVM with rbf kernel {test_accuracy}')
@@ -160,6 +212,15 @@ def main():
     #     pickle.dump(best_model, f, protocol=5)
     # plot_training_curves(eval_accuracies, plot_name=os.path.join('checkpoints', 'drybean_svm_rbf_acc_curves.png'))
 
+    best_model, eval_accuracies, test_accuracy = train_svm_adult(kernel='linear', p_grid={'class_weight' : [None, 'balanced'], 
+                                                                                          'dual' : ['auto'],
+                                                                                          'multi_class' : ['ovr', 'crammer_singer'],
+                                                                                          'max_iter' : [1000000],
+                                                                                          'C' : np.logspace(-2, 3, 10)}, verbose=2)
+    print(f'Final test accuracy for SVM with linear kernel {test_accuracy}')
+    with open(os.path.join('checkpoints', 'adult_svm_linear_model.pkl'), 'wb') as f:
+        pickle.dump(best_model, f, protocol=5)
+    plot_training_curves(eval_accuracies, plot_name=os.path.join('checkpoints', 'adult_svm_linear_acc_curves.png'))
 
 if __name__ == '__main__':
     main()
