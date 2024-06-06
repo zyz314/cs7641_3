@@ -90,7 +90,7 @@ def eval_model(model : nn.Module, dataloader : DataLoader, criterion : nn.Module
     return (temp_losses, temp_accs)
 
 
-def train_mlp_drybean():
+def train_mlp_drybean(data_splits = [0.8, 0.1, 0.1]):
     """
     """
     lr = 2e-3
@@ -222,15 +222,15 @@ def main():
     if not os.path.exists('checkpoints'):
         os.makedirs('checkpoints')
 
-    # best_model, train_losses, train_accuracies, eval_losses, eval_accuracies = train_mlp_drybean()
-    # torch.save(best_model, os.path.join('checkpoints', 'drybean_best_model.pt'))
-    # plot_training_curves(train_losses[1:], train_accuracies[1:], eval_losses[1:], eval_accuracies[1:],
-    #                      plot_name=os.path.join('checkpoints', 'drybean_loss_curves.png'))
+    best_model, train_losses, train_accuracies, eval_losses, eval_accuracies = train_mlp_drybean()
+    torch.save(best_model, os.path.join('checkpoints', 'drybean_nn_best_model.pt'))
+    plot_training_curves(train_losses, train_accuracies, eval_losses, eval_accuracies,
+                         plot_name=os.path.join('checkpoints', 'drybean_nn_loss_curves.png'))
 
     best_model, train_losses, train_accuracies, eval_losses, eval_accuracies = train_mlp_adult()
-    torch.save(best_model, os.path.join('checkpoints', 'adult_best_model.pt'))
+    torch.save(best_model, os.path.join('checkpoints', 'adult_nn_best_model.pt'))
     plot_training_curves(train_losses[1:], train_accuracies[1:], eval_losses[1:], eval_accuracies[1:],
-                         plot_name=os.path.join('checkpoints', 'adult_loss_curves.png'))
+                         plot_name=os.path.join('checkpoints', 'adult_nn_loss_curves.png'))
 
 if __name__ == '__main__':
     main()
