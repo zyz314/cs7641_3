@@ -1,3 +1,5 @@
 [submodule "assignment2/mlrose"]
 	path = assignment2/mlrose
 	url = https://github.com/hiive/mlrose.git
+[submodule "assignment2/pyperch"]
+	path = assignment2/pyperch
