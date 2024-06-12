@@ -1,0 +1,3 @@
+[submodule "assignment2/mlrose"]
+	path = assignment2/mlrose
+	url = https://github.com/hiive/mlrose.git
