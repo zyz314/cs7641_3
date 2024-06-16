@@ -3,7 +3,8 @@ import mlrose.mlrose_hiive as mlrose
 from mlrose.mlrose_hiive.generators.four_peaks_generator import FourPeaksGenerator
 from tqdm import tqdm
 from enum import Enum
-import matplotlib.pyplot as plt
+import torch
+import os
 
 
 class RandomOptimizationMethods(Enum):
@@ -60,17 +61,17 @@ def main():
     # problem = mlrose.generators.KnapsackGenerator().generate(seed=1234)
     # problem = mlrose.generators.FlipFlopGenerator().generate(seed=1234, size=50)
     # problem = mlrose.generators.TSPGenerator().generate(seed=1234, number_of_cities=10)
-    problem = FourPeaksGenerator().generate(seed=1234, size=10)
+    # problem = FourPeaksGenerator().generate(seed=1234, size=10)
 
-    for method in [RandomOptimizationMethods.SIMULATED_ANNEALING,
-                   RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING,
-                   RandomOptimizationMethods.GENETIC_ALGORITHM,
-                   RandomOptimizationMethods.MIMIC]:
-        best_state, best_fitness, avg_fitness, avg_curve = solve(
-            problem, method, n_seeds=n_seeds)
-        print(f"{method.name} - {best_state}, {best_fitness}, {avg_fitness}")
-        plt.plot(avg_curve)
-        plt.show()
+    # for method in [RandomOptimizationMethods.SIMULATED_ANNEALING,
+    #                RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING,
+    #                RandomOptimizationMethods.GENETIC_ALGORITHM,
+    #                RandomOptimizationMethods.MIMIC]:
+    #     best_state, best_fitness, avg_fitness, avg_iteration = solve(
+    #         problem, method, n_seeds=n_seeds)
+    #     print(f"{method.name} - {best_state}, {best_fitness}, {avg_iteration}")
+
+    model = torch.load(os.path.join('checkpoints', 'drybean_best_model.pt'))
 
 
 if __name__ == '__main__':
