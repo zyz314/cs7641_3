@@ -5,7 +5,7 @@ from tqdm import tqdm
 from enum import Enum
 import torch
 import os
-import pyperch
+from pyperch.neural import RHCModule
 
 
 class RandomOptimizationMethods(Enum):
@@ -73,7 +73,7 @@ def main():
     #     print(f"{method.name} - {best_state}, {best_fitness}, {avg_iteration}")
 
     model = torch.load(os.path.join('checkpoints', 'drybean_best_model.pt'))
-    rhc_model = pyperch.neural.RHCModule(input_dim=5, output_dim=2)
+    rhc_model = RHCModule(input_dim=5, output_dim=2)
 
 
 if __name__ == '__main__':
