@@ -10,6 +10,16 @@ import itertools
 import matplotlib.pyplot as plt
 
 
+class OptimizationProblems(Enum):
+    ONE_MAX = 1
+    MAX_K_COLOR = 2
+    FOUR_PEAKS = 3
+    FLIP_FLOP = 4
+    TSP = 5
+    KNAPSACK = 6
+    QUEENS = 7
+
+
 class RandomOptimizationMethods(Enum):
     SIMULATED_ANNEALING = 1
     RANDOMIZED_HILL_CLIMBING = 2
@@ -55,44 +65,52 @@ def solve(problem, method=RandomOptimizationMethods.SIMULATED_ANNEALING, n_seeds
 def main():
     '''
     '''
-    # problem = mlrose.generators.KnapsackGenerator().generate(seed=1234)
-
+    opt_problems = [OptimizationProblems.MAX_K_COLOR]
     n_seeds = 10
 
-    fitness = mlrose.OneMax()
-    problem = mlrose.DiscreteOpt(
-        length=10000, fitness_fn=fitness, maximize=True, max_val=2)
-    # problem = mlrose.generators.FlipFlopGenerator().generate(seed=1234, size=100)
-    # problem = mlrose.generators.TSPGenerator().generate(seed=1234, number_of_cities=10)
+    for opt_problem in opt_problems:
+        if opt_problem == OptimizationProblems.ONE_MAX:
+            fitness = mlrose.OneMax()
+            problem = mlrose.DiscreteOpt(
+                length=10000, fitness_fn=fitness, maximize=True, max_val=2)
+        elif opt_problem == OptimizationProblems.MAX_K_COLOR:
+            problem = mlrose.generators.MaxKColorGenerator().generate(seed=1234,
+                                                                      number_of_nodes=100, maximize=True)
+        elif opt_problem == OptimizationProblems.FOUR_PEAKS:
+            problem = FourPeaksGenerator().generate(seed=1234, size=100)
+        elif opt_problem == OptimizationProblems.FLIP_FLOP:
+            problem = mlrose.generators.FlipFlopGenerator().generate(seed=1234, size=100)
+        elif opt_problem == OptimizationProblems.TSP:
+            problem = mlrose.generators.TSPGenerator().generate(seed=1234, number_of_cities=10)
+        elif opt_problem == OptimizationProblems.KNAPSACK:
+            problem = mlrose.generators.KnapsackGenerator().generate(
+                seed=1234, number_of_items_types=10)
+        elif opt_problem == OptimizationProblems.QUEENS:
+            problem = mlrose.generators.QueensGenerator().generate(
+                seed=1234, size=20, maximize=True)
 
-    # problem = mlrose.generators.KnapsackGenerator().generate(
-    #     seed=1234, number_of_items_types=10)
-    # problem = FourPeaksGenerator().generate(seed=1234, size=10)
-    # problem = mlrose.generators.MaxKColorGenerator().generate(seed=1234,
-    #                                                           number_of_nodes=20)
+        methods = [RandomOptimizationMethods.SIMULATED_ANNEALING,
+                   RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING,
+                   RandomOptimizationMethods.GENETIC_ALGORITHM]
+        colors = ['r', 'g', 'b']
+        handles = []
+        for i, method in enumerate(methods):
+            _, best_fitness, avg_fitness, avg_iteration, curves = solve(
+                problem, method, n_seeds=n_seeds)
+            print(
+                f"{method.name} - {best_fitness}, {avg_fitness}, {avg_iteration}")
+            temp_handles = []
+            for curve in curves:
+                line, = plt.plot(curve, color=colors[i], label=method.name)
+                temp_handles.append(line)
+            handles.append(tuple(temp_handles))
 
-    methods = [RandomOptimizationMethods.SIMULATED_ANNEALING,
-               RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING,
-               RandomOptimizationMethods.GENETIC_ALGORITHM]
-    colors = ['r', 'g', 'b']
-    handles = []
-    for i, method in enumerate(methods):
-        _, best_fitness, avg_fitness, avg_iteration, curves = solve(
-            problem, method, n_seeds=n_seeds)
-        print(
-            f"{method.name} - {best_fitness}, {avg_fitness}, {avg_iteration}")
-        temp_handles = []
-        for curve in curves:
-            line, = plt.plot(curve, color=colors[i], label=method.name)
-            temp_handles.append(line)
-        handles.append(tuple(temp_handles))
-
-    plt.xlabel('Iterations')
-    plt.ylabel('Fitness')
-    plt.title('Optimization Curves')
-    plt.legend(handles, [method.name for method in methods])
-    plt.savefig(f"optimization_curves.png")
-    plt.close()
+        plt.xlabel('Iterations')
+        plt.ylabel('Fitness')
+        plt.title(f"Optimization Curves\n{opt_problem.name}")
+        plt.legend(handles, [method.name for method in methods])
+        plt.savefig(f"optimization_curves_{opt_problem.name}.png")
+        plt.close()
 
 
 if __name__ == '__main__':
