@@ -8,6 +8,7 @@ import os
 from pyperch.neural import RHCModule
 import itertools
 import matplotlib.pyplot as plt
+from time import time
 
 
 class OptimizationProblems(Enum):
@@ -41,16 +42,16 @@ def solve(problem, method=RandomOptimizationMethods.SIMULATED_ANNEALING, n_seeds
     for seed in tqdm(seeds):
         if method == RandomOptimizationMethods.SIMULATED_ANNEALING:
             state, fitness, curve = mlrose.simulated_annealing(
-                problem=problem, schedule=mlrose.GeomDecay(), random_state=seed, max_iters=max_iters, curve=True)
+                problem=problem, schedule=mlrose.ExpDecay(), random_state=seed, max_iters=max_iters, curve=True)
         elif method == RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING:
             state, fitness, curve = mlrose.random_hill_climb(
-                problem=problem, random_state=seed, restarts=np.random.randint(0, 10), max_iters=max_iters, curve=True)
+                problem=problem, random_state=seed, restarts=5, max_iters=max_iters, curve=True)
         elif method == RandomOptimizationMethods.GENETIC_ALGORITHM:
             state, fitness, curve = mlrose.genetic_alg(
-                problem=problem, pop_size=100, mutation_prob=np.random.rand(), max_iters=max_iters, random_state=seed, curve=True)
+                problem=problem, pop_size=200, mutation_prob=0.1, max_iters=max_iters, random_state=seed, curve=True)
         elif method == RandomOptimizationMethods.MIMIC:
             state, fitness, curve = mlrose.mimic(
-                problem=problem, pop_size=100, max_iters=max_iters, keep_pct=np.random.rand(), random_state=seed, curve=True)
+                problem=problem, pop_size=200, max_iters=max_iters, keep_pct=0.2, random_state=seed, curve=True)
         else:
             raise NotImplementedError()
         if best_fitness is None or fitness > best_fitness:
@@ -65,7 +66,7 @@ def solve(problem, method=RandomOptimizationMethods.SIMULATED_ANNEALING, n_seeds
 def main():
     '''
     '''
-    opt_problems = [OptimizationProblems.MAX_K_COLOR]
+    opt_problems = [OptimizationProblems.ONE_MAX]
     n_seeds = 10
 
     for opt_problem in opt_problems:
@@ -95,10 +96,12 @@ def main():
         colors = ['r', 'g', 'b']
         handles = []
         for i, method in enumerate(methods):
+            start_time = time()
             _, best_fitness, avg_fitness, avg_iteration, curves = solve(
                 problem, method, n_seeds=n_seeds)
+            end_time = time()
             print(
-                f"{method.name} - {best_fitness}, {avg_fitness}, {avg_iteration}")
+                f"{method.name} - {best_fitness}, {avg_fitness}, {avg_iteration}, {(end_time - start_time) / n_seeds}")
             temp_handles = []
             for curve in curves:
                 line, = plt.plot(curve, color=colors[i], label=method.name)
