@@ -17,7 +17,7 @@ from sklearn.experimental import enable_halving_search_cv
 from sklearn.model_selection import StratifiedKFold, KFold, GridSearchCV, HalvingGridSearchCV, cross_val_score, StratifiedShuffleSplit, ShuffleSplit
 from skorch import NeuralNetClassifier
 from skorch import NeuralNet
-from pyperch.neural import BackpropModule, RHCModule
+from pyperch.neural import BackpropModule, RHCModule, SAModule, GAModule
 
 import torch
 import torch.nn as nn
@@ -52,7 +52,9 @@ def train_svm_drybean(kernel='linear', p_grid={}, n_splits=3, test_size=0.3, n_j
 
     model = NeuralNetClassifier(
         # module=RHCModule,
-        module=BackpropModule,
+        module=SAModule,
+        # module=GAModule,
+        # module=BackpropModule,
         module__input_dim=dataset.get_num_features(),
         module__output_dim=dataset.get_num_classes(),
         module__hidden_units=50,
@@ -71,6 +73,9 @@ def train_svm_drybean(kernel='linear', p_grid={}, n_splits=3, test_size=0.3, n_j
         # Shuffle training data on each epoch
         iterator_train__shuffle=True,
     )
+    # RHCModule.register_rhc_training_step()
+    SAModule.register_sa_training_step()
+    # GAModule.register_ga_training_step()
     model.set_params(train_split=False, verbose=0)
 
     best_model = None
@@ -214,8 +219,9 @@ def main():
     # best_model, eval_accuracies, test_accuracy = train_linear_svm_drybean()
     best_model, test_accuracy = train_svm_drybean(kernel='linear', p_grid={'lr': np.logspace(-2, 1, 5),
                                                                            # 'optimizer__momentum': np.logspace(-4, 0, 5),
-                                                                           'module__hidden_units': [10, 25, 50],
-                                                                           'module__dropout_percent': [0., 0.1, 0.2],
+                                                                           'module__step_size': np.logspace(-4, 2, 10),
+                                                                           #    'module__hidden_units': [10, 25, 50],
+                                                                           #    'module__dropout_percent': [0., 0.1, 0.2],
                                                                            'max_epochs': [50],
                                                                            'batch_size': [16, 32, 64]}, verbose=2)
     print(f'Final test accuracy for SVM with linear kernel {test_accuracy}')
