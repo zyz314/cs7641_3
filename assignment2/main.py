@@ -49,7 +49,7 @@ def solve(problem, method=RandomOptimizationMethods.SIMULATED_ANNEALING, n_seeds
         fitness_results.append(fitness)
         iterations.append(curve.shape[0])
         curves.append(curve[:, 0])
-    return best_state, best_fitness, np.mean(fitness_results), np.mean(iterations), np.asarray(curves)
+    return best_state, best_fitness, np.mean(fitness_results), np.mean(iterations), curves
 
 
 def main():
@@ -57,7 +57,7 @@ def main():
     '''
     # problem = mlrose.generators.KnapsackGenerator().generate(seed=1234)
 
-    n_seeds = 100
+    n_seeds = 10
 
     fitness = mlrose.OneMax()
     problem = mlrose.DiscreteOpt(
@@ -72,7 +72,7 @@ def main():
     #                                                           number_of_nodes=20)
 
     methods = [RandomOptimizationMethods.SIMULATED_ANNEALING,
-               #    RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING,
+               RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING,
                RandomOptimizationMethods.GENETIC_ALGORITHM]
     colors = ['r', 'g', 'b']
     handles = []
