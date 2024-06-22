@@ -220,6 +220,8 @@ def main():
     best_model, test_accuracy = train_svm_drybean(kernel='linear', p_grid={'lr': np.logspace(-2, 1, 5),
                                                                            # 'optimizer__momentum': np.logspace(-4, 0, 5),
                                                                            'module__step_size': np.logspace(-4, 2, 10),
+                                                                           #    'module__t': [20000],
+                                                                           #    'module__cooling': [.99],
                                                                            #    'module__hidden_units': [10, 25, 50],
                                                                            #    'module__dropout_percent': [0., 0.1, 0.2],
                                                                            'max_epochs': [50],

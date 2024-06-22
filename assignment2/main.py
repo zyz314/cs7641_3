@@ -42,7 +42,7 @@ def solve(problem, method=RandomOptimizationMethods.SIMULATED_ANNEALING, n_seeds
     for seed in tqdm(seeds):
         if method == RandomOptimizationMethods.SIMULATED_ANNEALING:
             state, fitness, curve = mlrose.simulated_annealing(
-                problem=problem, schedule=mlrose.ExpDecay(), random_state=seed, max_iters=max_iters, curve=True)
+                problem=problem, schedule=mlrose.ExpDecay(init_temp=10), random_state=seed, max_iters=max_iters, curve=True)
         elif method == RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING:
             state, fitness, curve = mlrose.random_hill_climb(
                 problem=problem, random_state=seed, restarts=5, max_iters=max_iters, curve=True)
@@ -63,10 +63,53 @@ def solve(problem, method=RandomOptimizationMethods.SIMULATED_ANNEALING, n_seeds
     return best_state, best_fitness, np.mean(fitness_results), np.mean(iterations), curves
 
 
+def knapsack_sa_problem_size():
+    n_seeds = 10
+
+    exec_times = {RandomOptimizationMethods.SIMULATED_ANNEALING.name: [
+    ], RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING.name: [], RandomOptimizationMethods.GENETIC_ALGORITHM.name: []}
+
+    N = np.logspace(1, 3, 3, dtype=int)
+    for n_items in N:
+        fitness = mlrose.OneMax()
+        problem = mlrose.DiscreteOpt(
+            length=10000, fitness_fn=fitness, maximize=True, max_val=2)
+        # problem = mlrose.generators.KnapsackGenerator().generate(
+        #     seed=1234, number_of_items_types=n_items)
+
+        methods = [RandomOptimizationMethods.SIMULATED_ANNEALING,
+                   RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING, RandomOptimizationMethods.GENETIC_ALGORITHM]
+
+        for _, method in enumerate(methods):
+            start_time = time()
+            _, best_fitness, avg_fitness, avg_iteration, _ = solve(
+                problem, method, n_seeds=n_seeds)
+            exec_time = (time() - start_time) / n_seeds
+            print(
+                f"{method.name} - {best_fitness}, {avg_fitness}, {avg_iteration}, {exec_time}")
+            exec_times[method.name].append(exec_time)
+
+    if not os.path.exists('checkpoints'):
+        os.makedirs('checkpoints')
+
+    for item in exec_times.items():
+        key, value = item
+        plt.plot(N, value, label=key)
+    plt.legend()
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlabel('Problem size')
+    plt.ylabel('Execution time (sec)')
+    plt.title("Execution time")
+    plt.savefig(os.path.join('checkpoints',
+                f"exec_time_{OptimizationProblems.ONE_MAX.name}.png"))
+    plt.close()
+
+
 def main():
     '''
     '''
-    opt_problems = [OptimizationProblems.ONE_MAX]
+    opt_problems = [OptimizationProblems.KNAPSACK]
     n_seeds = 10
 
     for opt_problem in opt_problems:
@@ -85,7 +128,7 @@ def main():
             problem = mlrose.generators.TSPGenerator().generate(seed=1234, number_of_cities=10)
         elif opt_problem == OptimizationProblems.KNAPSACK:
             problem = mlrose.generators.KnapsackGenerator().generate(
-                seed=1234, number_of_items_types=10)
+                seed=1234, number_of_items_types=100)
         elif opt_problem == OptimizationProblems.QUEENS:
             problem = mlrose.generators.QueensGenerator().generate(
                 seed=1234, size=20, maximize=True)
@@ -108,13 +151,18 @@ def main():
                 temp_handles.append(line)
             handles.append(tuple(temp_handles))
 
+        if not os.path.exists('checkpoints'):
+            os.makedirs('checkpoints')
+
         plt.xlabel('Iterations')
         plt.ylabel('Fitness')
         plt.title(f"Optimization Curves\n{opt_problem.name}")
         plt.legend(handles, [method.name for method in methods])
-        plt.savefig(f"optimization_curves_{opt_problem.name}.png")
+        plt.savefig(os.path.join('checkpoints',
+                    f"optimization_curves_{opt_problem.name}.png"))
         plt.close()
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    knapsack_sa_problem_size()
