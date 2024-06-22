@@ -63,19 +63,34 @@ def solve(problem, method=RandomOptimizationMethods.SIMULATED_ANNEALING, n_seeds
     return best_state, best_fitness, np.mean(fitness_results), np.mean(iterations), curves
 
 
-def knapsack_sa_problem_size():
-    n_seeds = 10
-
+def plot_optimize_curve(opt_problem=OptimizationProblems.KNAPSACK, n_seeds=10):
     exec_times = {RandomOptimizationMethods.SIMULATED_ANNEALING.name: [
     ], RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING.name: [], RandomOptimizationMethods.GENETIC_ALGORITHM.name: []}
+    avg_fitnesses = {RandomOptimizationMethods.SIMULATED_ANNEALING.name: [
+    ], RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING.name: [], RandomOptimizationMethods.GENETIC_ALGORITHM.name: []}
 
-    N = np.logspace(1, 3, 3, dtype=int)
+    N = np.logspace(1, 5, 5, dtype=int)
     for n_items in N:
-        fitness = mlrose.OneMax()
-        problem = mlrose.DiscreteOpt(
-            length=10000, fitness_fn=fitness, maximize=True, max_val=2)
-        # problem = mlrose.generators.KnapsackGenerator().generate(
-        #     seed=1234, number_of_items_types=n_items)
+        if opt_problem == OptimizationProblems.ONE_MAX:
+            fitness = mlrose.OneMax()
+            problem = mlrose.DiscreteOpt(
+                length=n_items, fitness_fn=fitness, maximize=True, max_val=2)
+        elif opt_problem == OptimizationProblems.MAX_K_COLOR:
+            problem = mlrose.generators.MaxKColorGenerator().generate(seed=1234,
+                                                                      number_of_nodes=n_items, maximize=True)
+        elif opt_problem == OptimizationProblems.FOUR_PEAKS:
+            problem = FourPeaksGenerator().generate(seed=1234, size=n_items)
+        elif opt_problem == OptimizationProblems.FLIP_FLOP:
+            problem = mlrose.generators.FlipFlopGenerator().generate(seed=1234, size=n_items)
+        elif opt_problem == OptimizationProblems.TSP:
+            problem = mlrose.generators.TSPGenerator().generate(
+                seed=1234, number_of_cities=n_items)
+        elif opt_problem == OptimizationProblems.KNAPSACK:
+            problem = mlrose.generators.KnapsackGenerator().generate(
+                seed=1234, number_of_items_types=n_items)
+        elif opt_problem == OptimizationProblems.QUEENS:
+            problem = mlrose.generators.QueensGenerator().generate(
+                seed=1234, size=n_items, maximize=True)
 
         methods = [RandomOptimizationMethods.SIMULATED_ANNEALING,
                    RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING, RandomOptimizationMethods.GENETIC_ALGORITHM]
@@ -83,15 +98,17 @@ def knapsack_sa_problem_size():
         for _, method in enumerate(methods):
             start_time = time()
             _, best_fitness, avg_fitness, avg_iteration, _ = solve(
-                problem, method, n_seeds=n_seeds)
+                problem, method, n_seeds=n_seeds, max_iters=100)
             exec_time = (time() - start_time) / n_seeds
             print(
                 f"{method.name} - {best_fitness}, {avg_fitness}, {avg_iteration}, {exec_time}")
             exec_times[method.name].append(exec_time)
+            avg_fitnesses[method.nam].append(avg_fitness)
 
     if not os.path.exists('checkpoints'):
         os.makedirs('checkpoints')
 
+    plt.subplot(1, 2, 1)
     for item in exec_times.items():
         key, value = item
         plt.plot(N, value, label=key)
@@ -100,9 +117,18 @@ def knapsack_sa_problem_size():
     plt.yscale('log')
     plt.xlabel('Problem size')
     plt.ylabel('Execution time (sec)')
-    plt.title("Execution time")
+    plt.title("Execute Time")
+    plt.subplot(1, 2, 2)
+    for item in avg_fitnesses.items():
+        key, value = item
+        plt.plot(N, value, label=key)
+    plt.legend()
+    plt.xscale('log')
+    plt.xlabel('Problem size')
+    plt.ylabel('Fitness')
+    plt.title("Fitness")
     plt.savefig(os.path.join('checkpoints',
-                f"exec_time_{OptimizationProblems.ONE_MAX.name}.png"))
+                f"perf_{opt_problem.name}.png"))
     plt.close()
 
 
@@ -164,5 +190,5 @@ def main():
 
 
 if __name__ == '__main__':
-    # main()
-    knapsack_sa_problem_size()
+    plot_optimize_curve(OptimizationProblems.KNAPSACK)
+    plot_optimize_curve(OptimizationProblems.ONE_MAX)
