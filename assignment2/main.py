@@ -64,10 +64,10 @@ def solve(problem, method=RandomOptimizationMethods.SIMULATED_ANNEALING, n_seeds
 
 
 def plot_optimize_curve(opt_problem=OptimizationProblems.KNAPSACK, n_seeds=10):
-    exec_times = {RandomOptimizationMethods.SIMULATED_ANNEALING.name: [
-    ], RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING.name: [], RandomOptimizationMethods.GENETIC_ALGORITHM.name: []}
-    avg_fitnesses = {RandomOptimizationMethods.SIMULATED_ANNEALING.name: [
-    ], RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING.name: [], RandomOptimizationMethods.GENETIC_ALGORITHM.name: []}
+    exec_times = {RandomOptimizationMethods.SIMULATED_ANNEALING: [
+    ], RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING: [], RandomOptimizationMethods.GENETIC_ALGORITHM: []}
+    avg_fitnesses = {RandomOptimizationMethods.SIMULATED_ANNEALING: [
+    ], RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING: [], RandomOptimizationMethods.GENETIC_ALGORITHM: []}
 
     N = np.logspace(1, 5, 5, dtype=int)
     for n_items in N:
@@ -102,16 +102,19 @@ def plot_optimize_curve(opt_problem=OptimizationProblems.KNAPSACK, n_seeds=10):
             exec_time = (time() - start_time) / n_seeds
             print(
                 f"{method.name} - {best_fitness}, {avg_fitness}, {avg_iteration}, {exec_time}")
-            exec_times[method.name].append(exec_time)
-            avg_fitnesses[method.nam].append(avg_fitness)
+            exec_times[method].append(exec_time)
+            avg_fitnesses[method].append(avg_fitness)
 
     if not os.path.exists('checkpoints'):
         os.makedirs('checkpoints')
 
+    labels = {RandomOptimizationMethods.SIMULATED_ANNEALING: 'SA',
+              RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING: 'RHC',
+              RandomOptimizationMethods.GENETIC_ALGORITHM: 'GA'}
     plt.subplot(1, 2, 1)
     for item in exec_times.items():
         key, value = item
-        plt.plot(N, value, label=key)
+        plt.plot(N, value, label=labels[key])
     plt.legend()
     plt.xscale('log')
     plt.yscale('log')
@@ -121,7 +124,7 @@ def plot_optimize_curve(opt_problem=OptimizationProblems.KNAPSACK, n_seeds=10):
     plt.subplot(1, 2, 2)
     for item in avg_fitnesses.items():
         key, value = item
-        plt.plot(N, value, label=key)
+        plt.plot(N, value, label=labels[key])
     plt.legend()
     plt.xscale('log')
     plt.xlabel('Problem size')
