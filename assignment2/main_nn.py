@@ -15,7 +15,7 @@ import torch.optim as optim
 from torch import nn
 from skorch import NeuralNetClassifier
 from skorch import NeuralNet
-from pyperch.neural import BackpropModule, RHCModule
+from pyperch.neural import BackpropModule, RHCModule, SAModule, GAModule
 from pyperch.utils.decorators import add_to
 from skorch.dataset import unpack_data
 import copy
@@ -42,40 +42,111 @@ def plot_training_curves(train_losses, train_accuracies, eval_losses, eval_accur
     plt.legend()
     plt.title('Accuracy')
     plt.savefig(plot_name)
+    plt.close()
 
 
-def train_backprop_drybean(data_splits=[0.7, 0.3]) -> tuple:
-    '''
-    '''
-    dataset = DryBeanDataset()
-    # use, _ = random_split(dataset, [0.1, 0.9])
-    train_dataset, test_dataset = random_split(dataset, data_splits)
-
+def get_bp_model(input_dim, output_dim, num_epochs):
     model = NeuralNetClassifier(
-        # module=RHCModule,
         module=BackpropModule,
-        module__input_dim=dataset.get_num_features(),
-        module__output_dim=dataset.get_num_classes(),
+        module__input_dim=input_dim,
+        module__output_dim=output_dim,
         module__hidden_units=50,
         module__hidden_layers=1,
         module__dropout_percent=0.,
-        # module__step_size=2e-3,
         criterion=nn.CrossEntropyLoss,
-        optimizer=optim.Adam,
-        # optimizer__momentum=0.9,
+        optimizer=optim.SGD,
+        optimizer__momentum=0.9,
         optimizer__weight_decay=2e-4,
         lr=5e-4,
-        max_epochs=10,
+        max_epochs=num_epochs,
         batch_size=16,
         device='cuda' if torch.cuda.is_available() else 'cpu',
-        verbose=1,
         callbacks=[EpochScoring(
             scoring='accuracy', name='train_acc', on_train=True, lower_is_better=False),],
         # Shuffle training data on each epoch
         iterator_train__shuffle=True,
     )
-    # RHCModule.register_rhc_training_step()
-    # model.registe
+    return model
+
+
+def get_sa_model(input_dim, output_dim, num_epochs):
+    model = NeuralNetClassifier(
+        module=SAModule,
+        module__input_dim=input_dim,
+        module__output_dim=output_dim,
+        module__hidden_units=50,
+        module__hidden_layers=1,
+        module__dropout_percent=0.,
+        module__t=20000,
+        module__cooling=.99,
+        module__step_size=0.1,
+        max_epochs=num_epochs,
+        batch_size=16,
+        device='cuda' if torch.cuda.is_available() else 'cpu',
+        callbacks=[EpochScoring(
+            scoring='accuracy', name='train_acc', on_train=True, lower_is_better=False),],
+        # Shuffle training data on each epoch
+        iterator_train__shuffle=True,
+    )
+    SAModule.register_sa_training_step()
+    return model
+
+
+def get_rhc_model(input_dim, output_dim, num_epochs):
+    model = NeuralNetClassifier(
+        module=RHCModule,
+        module__input_dim=input_dim,
+        module__output_dim=output_dim,
+        module__hidden_units=50,
+        module__hidden_layers=1,
+        module__dropout_percent=0.,
+        module__step_size=0.1,
+        max_epochs=num_epochs,
+        batch_size=16,
+        device='cuda' if torch.cuda.is_available() else 'cpu',
+        callbacks=[EpochScoring(
+            scoring='accuracy', name='train_acc', on_train=True, lower_is_better=False),],
+        # Shuffle training data on each epoch
+        iterator_train__shuffle=True,
+    )
+    RHCModule.register_rhc_training_step()
+    return model
+
+
+def get_ga_model(input_dim, output_dim, num_epochs):
+    model = NeuralNetClassifier(
+        module=GAModule,
+        module__input_dim=input_dim,
+        module__output_dim=output_dim,
+        module__hidden_units=50,
+        module__hidden_layers=1,
+        module__dropout_percent=0.,
+        module__population_size=300,
+        module__to_mate=150,
+        module__to_mutate=30,
+        module__step_size=0.1,
+        criterion=nn.CrossEntropyLoss(),
+        max_epochs=num_epochs,
+        batch_size=16,
+        # device='cuda' if torch.cuda.is_available() else 'cpu',
+        callbacks=[EpochScoring(
+            scoring='accuracy', name='train_acc', on_train=True, lower_is_better=False),],
+        # Shuffle training data on each epoch
+        iterator_train__shuffle=True,
+    )
+    GAModule.register_ga_training_step()
+    return model
+
+
+def train_adult(model_generator, data_splits=[0.7, 0.3], use_pct=0.1, num_epochs=100) -> tuple:
+    '''
+    '''
+    dataset = AdultDataset()
+    useset, _ = random_split(dataset, [use_pct, 1.0 - use_pct])
+    train_dataset, test_dataset = random_split(useset, data_splits)
+
+    model = model_generator(dataset.get_num_features(),
+                            dataset.get_num_classes(), num_epochs)
 
     X, y = train_dataset[:]
     X, y = X.numpy(), y.numpy()
@@ -101,22 +172,19 @@ def set_seed(seed=123456789):
 
 
 def main():
-    set_seed()
-
     if not os.path.exists('checkpoints'):
         os.makedirs('checkpoints')
 
-    best_model, train_losses, train_accuracies, eval_losses, eval_accuracies = train_backprop_drybean()
-    torch.save(best_model, os.path.join(
-        'checkpoints', 'drybean_bp_best_model.pt'))
-    plot_training_curves(train_losses, train_accuracies, eval_losses, eval_accuracies,
-                         plot_name=os.path.join('checkpoints', 'drybean_bp_loss_curves.png'))
+    models = [get_bp_model, get_sa_model, get_rhc_model, get_ga_model]
+    names = ['bp', 'sa', 'rhc', 'ga']
 
-    # best_model, train_losses, train_accuracies, eval_losses, eval_accuracies = train_mlp_adult()
-    # torch.save(best_model, os.path.join(
-    #     'checkpoints', 'adult_nn_best_model.pt'))
-    # plot_training_curves(train_losses[1:], train_accuracies[1:], eval_losses[1:], eval_accuracies[1:],
-    #                      plot_name=os.path.join('checkpoints', 'adult_nn_loss_curves.png'))
+    for model, name in zip(models, names):
+        set_seed()
+        best_model, train_losses, train_accuracies, eval_losses, eval_accuracies = train_adult(model_generator=model,
+                                                                                               use_pct=.1,
+                                                                                               num_epochs=2)
+        plot_training_curves(train_losses, train_accuracies, eval_losses, eval_accuracies,
+                             plot_name=os.path.join('checkpoints', f"adult_{name}_loss_curves.png"))
 
 
 if __name__ == '__main__':
