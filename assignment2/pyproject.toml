@@ -18,5 +18,5 @@ certifi = "^2024.2.2"
 openpyxl = "^3.1.2"
 pandas = "^2.2.2"
 torch = "^2.3.1"
-skorch = "^1.0.0"
+skorch = "0.15.0"
 
