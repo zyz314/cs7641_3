@@ -36,22 +36,23 @@ def solve(problem, method=RandomOptimizationMethods.SIMULATED_ANNEALING, n_seeds
     fitness_results = []
     iterations = []
     curves = []
+    max_curve_length = None
 
     best_fitness = None
     best_state = None
     for seed in tqdm(seeds):
         if method == RandomOptimizationMethods.SIMULATED_ANNEALING:
             state, fitness, curve = mlrose.simulated_annealing(
-                problem=problem, schedule=mlrose.ExpDecay(init_temp=10), random_state=seed, max_iters=max_iters, curve=True)
+                problem=problem, random_state=seed, max_iters=max_iters, curve=True)
         elif method == RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING:
             state, fitness, curve = mlrose.random_hill_climb(
-                problem=problem, random_state=seed, restarts=5, max_iters=max_iters, curve=True)
+                problem=problem, random_state=seed, restarts=np.random.randint(0, 10), max_iters=max_iters, curve=True)
         elif method == RandomOptimizationMethods.GENETIC_ALGORITHM:
             state, fitness, curve = mlrose.genetic_alg(
-                problem=problem, pop_size=200, mutation_prob=0.1, max_iters=max_iters, random_state=seed, curve=True)
+                problem=problem, max_iters=max_iters, random_state=seed, curve=True)
         elif method == RandomOptimizationMethods.MIMIC:
             state, fitness, curve = mlrose.mimic(
-                problem=problem, pop_size=200, max_iters=max_iters, keep_pct=0.2, random_state=seed, curve=True)
+                problem=problem, max_iters=max_iters, random_state=seed, curve=True)
         else:
             raise NotImplementedError()
         if best_fitness is None or fitness > best_fitness:
@@ -60,14 +61,25 @@ def solve(problem, method=RandomOptimizationMethods.SIMULATED_ANNEALING, n_seeds
         fitness_results.append(fitness)
         iterations.append(curve.shape[0])
         curves.append(curve[:, 0])
+        if max_curve_length is None or curve.shape[0] > max_curve_length:
+            max_curve_length = curve.shape[0]
+
+    # padding with last value to the same length
+    for i, curve in enumerate(curves):
+        if curve.shape[0] < max_curve_length:
+            curves[i] = np.append(
+                curve, curve[-1] * np.ones(max_curve_length - curve.shape[0]))
+
     return best_state, best_fitness, np.mean(fitness_results), np.mean(iterations), curves
 
 
 def plot_optimize_curve(opt_problem=OptimizationProblems.KNAPSACK, n_seeds=10):
-    exec_times = {RandomOptimizationMethods.SIMULATED_ANNEALING: [
-    ], RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING: [], RandomOptimizationMethods.GENETIC_ALGORITHM: []}
-    avg_fitnesses = {RandomOptimizationMethods.SIMULATED_ANNEALING: [
-    ], RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING: [], RandomOptimizationMethods.GENETIC_ALGORITHM: []}
+    methods = [method for method in RandomOptimizationMethods if method !=
+               RandomOptimizationMethods.MIMIC]
+
+    exec_times = dict((method, []) for method in methods)
+    avg_fitnesses = dict((method, []) for method in methods)
+    avg_iters = dict((method, []) for method in methods)
 
     N = np.logspace(1, 5, 5, dtype=int)
     for n_items in N:
@@ -92,18 +104,16 @@ def plot_optimize_curve(opt_problem=OptimizationProblems.KNAPSACK, n_seeds=10):
             problem = mlrose.generators.QueensGenerator().generate(
                 seed=1234, size=n_items, maximize=True)
 
-        methods = [RandomOptimizationMethods.SIMULATED_ANNEALING,
-                   RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING, RandomOptimizationMethods.GENETIC_ALGORITHM]
-
         for _, method in enumerate(methods):
             start_time = time()
             _, best_fitness, avg_fitness, avg_iteration, _ = solve(
-                problem, method, n_seeds=n_seeds, max_iters=100)
+                problem, method, n_seeds=n_seeds, max_iters=np.inf)
             exec_time = (time() - start_time) / n_seeds
             print(
                 f"{method.name} - {best_fitness}, {avg_fitness}, {avg_iteration}, {exec_time}")
             exec_times[method].append(exec_time)
             avg_fitnesses[method].append(avg_fitness)
+            avg_iters[method].append(avg_iteration)
 
     if not os.path.exists('checkpoints'):
         os.makedirs('checkpoints')
@@ -111,31 +121,46 @@ def plot_optimize_curve(opt_problem=OptimizationProblems.KNAPSACK, n_seeds=10):
     labels = {RandomOptimizationMethods.SIMULATED_ANNEALING: 'SA',
               RandomOptimizationMethods.RANDOMIZED_HILL_CLIMBING: 'RHC',
               RandomOptimizationMethods.GENETIC_ALGORITHM: 'GA'}
-    plt.subplot(1, 2, 1)
-    for item in exec_times.items():
-        key, value = item
-        plt.plot(N, value, label=labels[key])
-    plt.legend()
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.xlabel('Problem size')
-    plt.ylabel('Execution time (sec)')
-    plt.title("Execute Time")
-    plt.subplot(1, 2, 2)
+
+    fig, _ = plt.subplots(nrows=1, ncols=3, sharex=True,
+                          sharey=True, squeeze=False)
+    fig.supxlabel('Problem Size')
+    plt.tight_layout(rect=(1, 1, 1, 1))
+
+    plt.subplot(1, 3, 1)
     for item in avg_fitnesses.items():
         key, value = item
         plt.plot(N, value, label=labels[key])
     plt.legend()
+    plt.grid(visible=True)
     plt.xscale('log')
-    plt.xlabel('Problem size')
+    plt.yscale('log')
     plt.ylabel('Fitness')
     plt.title("Fitness")
+    plt.subplot(1, 3, 2)
+    for item in exec_times.items():
+        key, value = item
+        plt.plot(N, value, label=labels[key])
+    plt.grid(visible=True)
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.ylabel('Time (sec)')
+    plt.title("Avg. Execute Time")
+    plt.subplot(1, 3, 3)
+    for item in avg_iters.items():
+        key, value = item
+        plt.plot(N, value, label=labels[key])
+    plt.grid(visible=True)
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.ylabel('Iteration')
+    plt.title("Avg. Iteration")
     plt.savefig(os.path.join('checkpoints',
                 f"perf_{opt_problem.name}.png"))
     plt.close()
 
 
-def main():
+def plot_trajectories():
     '''
     '''
     opt_problems = [OptimizationProblems.KNAPSACK]
