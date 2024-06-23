@@ -86,7 +86,7 @@ def plot_optimize_curve(opt_problem=OptimizationProblems.KNAPSACK, n_seeds=10):
         if opt_problem == OptimizationProblems.ONE_MAX:
             fitness = mlrose.OneMax()
             problem = mlrose.DiscreteOpt(
-                length=n_items, fitness_fn=fitness, maximize=True, max_val=2)
+                length=n_items, fitness_fn=fitness, maximize=True, max_val=1000)
         elif opt_problem == OptimizationProblems.MAX_K_COLOR:
             problem = mlrose.generators.MaxKColorGenerator().generate(seed=1234,
                                                                       number_of_nodes=n_items, maximize=True)
