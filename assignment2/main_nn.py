@@ -16,6 +16,7 @@ from torch import nn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from skorch import NeuralNetClassifier
 from skorch import NeuralNet
+from skorch.dataset import ValidSplit
 from pyperch.neural import BackpropModule, RHCModule, SAModule, GAModule
 from pyperch.utils.decorators import add_to
 from skorch.dataset import unpack_data
@@ -51,34 +52,29 @@ def plot_training_curves(train_losses, train_accuracies, eval_losses, eval_accur
 
 
 def get_bp_model(input_dim, output_dim, num_epochs):
-    def ds_accuracy(net, ds, y=None):
-        y_true = [y for _, y in ds]
-        y_pred = net.predict(ds)
-        return accuracy_score(y_true, y_pred)
-
     model = NeuralNetClassifier(
         module=BackpropModule,
         module__input_dim=input_dim,
         module__output_dim=output_dim,
         module__hidden_layers=0,
         module__dropout_percent=0.,
+        module__activation=nn.Identity(),
+        train_split=ValidSplit(cv=3, stratified=True),
         criterion=nn.CrossEntropyLoss,
         optimizer=optim.Adam,
         optimizer__weight_decay=3.16227,
-        lr=0.00177,
+        # optimizer__momentum=0.31622776601683794,
+        lr=0.0017782794100389228,
         max_epochs=num_epochs,
         batch_size=8,
         device='cuda' if torch.cuda.is_available() else 'cpu',
         callbacks=[EpochScoring(
-            scoring=ds_accuracy, name='train_acc', on_train=True, lower_is_better=False),
-            # EpochScoring(
-            # scoring='accuracy', name='train_acc', on_train=True, lower_is_better=False),
-            LRScheduler(policy=ReduceLROnPlateau, monitor='train_loss', mode='min', patience=3)],
+            scoring='accuracy', name='train_acc', on_train=True, lower_is_better=False)],
         # Shuffle training data on each epoch
         iterator_train__shuffle=True,
     )
     p_grid = {'lr': np.logspace(-4, 1, 5),
-              'optimizer__weight_decay': np.logspace(-1, 2, 5)}
+              'optimizer__momentum': np.logspace(-1, 0, 5)}
     return model, p_grid
 
 
@@ -89,17 +85,19 @@ def get_sa_model(input_dim, output_dim, num_epochs):
         module__output_dim=output_dim,
         module__hidden_layers=0,
         module__dropout_percent=0.,
-        module__t=10.0,
-        module__cooling=.001,
+        module__t=100000.0,
+        module__cooling=0.99,
         module__step_size=100.,
         module__activation=nn.Identity(),
+        train_split=ValidSplit(cv=3, stratified=True),
         criterion=nn.CrossEntropyLoss,
+        optimizer=optim.Adam,
+        optimizer__weight_decay=3.16227,
         max_epochs=num_epochs,
         batch_size=8,
         device='cuda' if torch.cuda.is_available() else 'cpu',
         callbacks=[EpochScoring(
-            scoring='accuracy', name='train_acc', on_train=True, lower_is_better=False),
-            LRScheduler(policy=ReduceLROnPlateau, monitor='train_loss', mode='min', patience=3)],
+            scoring='accuracy', name='train_acc', on_train=True, lower_is_better=False)],
         # Shuffle training data on each epoch
         iterator_train__shuffle=True,
     )
@@ -116,14 +114,15 @@ def get_rhc_model(input_dim, output_dim, num_epochs):
         module=RHCModule,
         module__input_dim=input_dim,
         module__output_dim=output_dim,
-        module__hidden_units=50,
-        module__hidden_layers=1,
+        module__hidden_layers=0,
         module__dropout_percent=0.,
         module__step_size=316227.7660168379,
         module__activation=nn.Identity(),
         criterion=nn.CrossEntropyLoss(),
+        optimizer=optim.Adam,
+        optimizer__weight_decay=3.16227,
         max_epochs=num_epochs,
-        batch_size=16,
+        batch_size=32,
         device='cuda' if torch.cuda.is_available() else 'cpu',
         callbacks=[EpochScoring(
             scoring='accuracy', name='train_acc', on_train=True, lower_is_better=False),],
@@ -150,6 +149,8 @@ def get_ga_model(input_dim, output_dim, num_epochs):
         module__step_size=0.1,
         module__activation=nn.Identity(),
         criterion=nn.CrossEntropyLoss(),
+        optimizer=optim.Adam,
+        optimizer__weight_decay=3.16227,
         max_epochs=num_epochs,
         batch_size=16,
         # device='cuda' if torch.cuda.is_available() else 'cpu',
@@ -259,14 +260,15 @@ def main():
     if not os.path.exists('checkpoints'):
         os.makedirs('checkpoints')
 
-    # models = [get_bp_model, get_sa_model, get_rhc_model, get_ga_model]
-    # names = ['bp', 'sa', 'rhc', 'ga']
+    models = [get_bp_model, get_sa_model, get_rhc_model, get_ga_model]
+    names = ['bp', 'sa', 'rhc', 'ga']
+    n_epochs = [50, 50, 50, 50]
 
-    search = False
+    search = True
     use_pct = 0.3
-    models = [get_bp_model]
-    names = ['bp']
-    n_epochs = [1]
+    # models = [get_sa_model]
+    # names = ['sa']
+    # n_epochs = [15]
 
     dataset = DryBeanDataset()
     for model, name, epoch_count in zip(models, names, n_epochs):
