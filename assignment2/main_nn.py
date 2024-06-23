@@ -55,9 +55,9 @@ def get_bp_model(input_dim, output_dim, num_epochs):
         module__dropout_percent=0.,
         criterion=nn.CrossEntropyLoss,
         optimizer=optim.SGD,
-        optimizer__momentum=0.9,
-        optimizer__weight_decay=2e-4,
-        lr=5e-4,
+        optimizer__momentum=1e-6,
+        optimizer__weight_decay=0.1,
+        lr=1.0,
         max_epochs=num_epochs,
         batch_size=16,
         device='cuda' if torch.cuda.is_available() else 'cpu',
@@ -141,25 +141,48 @@ def get_ga_model(input_dim, output_dim, num_epochs):
 def train_adult(model_generator, data_splits=[0.7, 0.3], use_pct=0.1, num_epochs=100) -> tuple:
     '''
     '''
+    n_iterations = 10
+
     dataset = AdultDataset()
-    useset, _ = random_split(dataset, [use_pct, 1.0 - use_pct])
-    train_dataset, test_dataset = random_split(useset, data_splits)
 
-    model = model_generator(dataset.get_num_features(),
-                            dataset.get_num_classes(), num_epochs)
+    best_model = None
+    best_acc = None
 
-    X, y = train_dataset[:]
-    X, y = X.numpy(), y.numpy()
-    model.fit(X, y)
+    train_losses = []
+    train_accs = []
+    valid_losses = []
+    valid_accs = []
+    accs = []
 
-    X, y = test_dataset[:]
-    X, y = X.numpy(), y.numpy()
-    pred = model.predict(X)
-    acc = accuracy_score(y, pred)
+    for _ in range(n_iterations):
+        useset, _ = random_split(dataset, [use_pct, 1.0 - use_pct])
+        train_dataset, test_dataset = random_split(useset, data_splits)
 
-    print(f'Final accuracy {acc}')
-    return (model, model.history[:, 'train_loss'], model.history[:, 'train_acc'],
-            model.history[:, 'valid_loss'], model.history[:, 'valid_acc'])
+        model = model_generator(dataset.get_num_features(),
+                                dataset.get_num_classes(), num_epochs)
+
+        X, y = train_dataset[:]
+        X, y = X.numpy(), y.numpy()
+        model.fit(X, y)
+
+        X, y = test_dataset[:]
+        X, y = X.numpy(), y.numpy()
+        pred = model.predict(X)
+        acc = accuracy_score(y, pred)
+
+        train_losses.append(model.history[:, 'train_loss'])
+        train_accs.append(model.history[:, 'train_acc'])
+        valid_losses.append(model.history[:, 'valid_loss'])
+        valid_accs.append(model.history[:, 'valid_acc'])
+        accs.append(acc)
+
+        if best_acc is None or acc > best_acc:
+            best_acc = acc
+            best_model = copy.deepcopy(model)
+
+    print(f'Final accuracy {np.average(accs)}')
+    return (best_model, np.average(train_losses, axis=1), np.average(train_accs, axis=1),
+            np.average(valid_losses, axis=1), np.average(valid_accs, axis=1))
 
 
 def set_seed(seed=123456789):
