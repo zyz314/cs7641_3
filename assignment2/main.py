@@ -1,3 +1,7 @@
+# For google colab to find mlrose_hiive
+import sys
+sys.path.append('/content/cs7641/assignment2/mlrose')
+
 import numpy as np
 import mlrose.mlrose_hiive as mlrose
 from mlrose.mlrose_hiive.generators.four_peaks_generator import FourPeaksGenerator
@@ -81,7 +85,7 @@ def plot_optimize_curve(opt_problem=OptimizationProblems.KNAPSACK, n_seeds=10):
     avg_fitnesses = dict((method, []) for method in methods)
     avg_iters = dict((method, []) for method in methods)
 
-    N = np.logspace(1, 5, 5, dtype=int)
+    N = np.logspace(1, 3, 5, dtype=int)
     for n_items in N:
         if opt_problem == OptimizationProblems.ONE_MAX:
             fitness = mlrose.OneMax()
@@ -138,14 +142,15 @@ def plot_optimize_curve(opt_problem=OptimizationProblems.KNAPSACK, n_seeds=10):
     plt.ylabel('Fitness')
     plt.title("Fitness")
     plt.subplot(1, 3, 2)
-    for item in exec_times.items():
-        key, value = item
-        plt.plot(N, value, label=labels[key])
+    for time_item, iter_item in zip(exec_times.items(), avg_iters.items()):
+        t_key, t_value = time_item
+        _, i_value = iter_item
+        plt.plot(N, np.asarray(t_value) / np.asarray(i_value), label=labels[t_key])
     plt.grid(visible=True)
     plt.xscale('log')
     plt.yscale('log')
     plt.ylabel('Time (sec)')
-    plt.title("Avg. Execute Time")
+    plt.title("Avg. Execute Time / Iteration")
     plt.subplot(1, 3, 3)
     for item in avg_iters.items():
         key, value = item
