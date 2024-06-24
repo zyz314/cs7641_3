@@ -295,9 +295,7 @@ def main():
 
     search = False
     use_pct = 0.2
-    models = [get_sa_model]
-    names = ['sa']
-    n_epochs = [5]
+    n_iterations = 2
 
     dataset = DryBeanDataset(transforms=nn.BatchNorm1d(num_features=16))
     for model, name, epoch_count in zip(models, names, n_epochs):
@@ -306,9 +304,11 @@ def main():
             _ = param_search(dataset=dataset, model_generator=model,
                              use_pct=use_pct, num_epochs=epoch_count)
         else:
+            start_time = time()
             _, train_losses, train_accuracies, eval_losses, eval_accuracies = train(dataset=dataset, model_generator=model,
                                                                                     use_pct=use_pct,
-                                                                                    num_epochs=epoch_count, n_iterations=2)
+                                                                                    num_epochs=epoch_count, n_iterations=n_iterations)
+            print(f"Algorithm {name} took {time() - start_time} sec for {epoch_count * n_iterations} iterations")
             plot_learning_curves(train_losses, train_accuracies, eval_losses, eval_accuracies,
                                  plot_name=os.path.join('checkpoints', f"drybean_{name}_loss_curves.png"), plot_variance=False)
             plot_learning_curves(train_losses, train_accuracies, eval_losses, eval_accuracies,
