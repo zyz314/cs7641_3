@@ -108,7 +108,7 @@ def get_sa_model(input_dim, output_dim, num_epochs):
         module__dropout_percent=0.,
         module__t=5000.0,
         module__cooling=0.99,
-        module__step_size=0.01,
+        module__step_size=0.1,
         module__activation=nn.Tanh(),
         train_split=ValidSplit(cv=3, stratified=True),
         criterion=nn.CrossEntropyLoss,
@@ -138,7 +138,7 @@ def get_rhc_model(input_dim, output_dim, num_epochs):
         module__hidden_units=10,
         module__hidden_layers=1,
         module__dropout_percent=0.,
-        module__step_size=0.01,
+        module__step_size=0.1,
         module__activation=nn.Tanh(),
         train_split=ValidSplit(cv=3, stratified=True),
         criterion=nn.CrossEntropyLoss,
@@ -310,7 +310,9 @@ def main():
                                                                                     use_pct=use_pct,
                                                                                     num_epochs=epoch_count, n_iterations=2)
             plot_learning_curves(train_losses, train_accuracies, eval_losses, eval_accuracies,
-                                 plot_name=os.path.join('checkpoints', f"drybean_{name}_loss_curves.png"))
+                                 plot_name=os.path.join('checkpoints', f"drybean_{name}_loss_curves.png"), plot_variance=False)
+            plot_learning_curves(train_losses, train_accuracies, eval_losses, eval_accuracies,
+                                 plot_name=os.path.join('checkpoints', f"drybean_{name}_learning_curves.png"), plot_variance=True)
 
 
 if __name__ == '__main__':
