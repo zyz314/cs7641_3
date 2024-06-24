@@ -37,19 +37,17 @@ def plot_learning_curves(train_losses, train_accuracies, eval_losses, eval_accur
     test_accuracy_std = np.asarray(eval_accuracies).std(axis=1)
     train_loss_mean = np.asarray(train_losses).mean(axis=1)
     test_loss_mean = np.asarray(eval_losses).mean(axis=1)
+    x = np.arange(len(train_accuracies))
 
-    if plot_variance:
-        plt.fill_between(range(len(train_accuracies)), train_accuracy_mean - train_accuracy_std,
-                         train_accuracy_mean + train_accuracy_std, alpha=0.3,
-                         color='cyan')
-        plt.fill_between(range(len(eval_accuracies)), test_accuracy_mean - test_accuracy_std,
+    if plot_variance:        
+        plt.fill_between(x, train_accuracy_mean - train_accuracy_std,
+                         train_accuracy_mean + train_accuracy_std, alpha=0.3, color='cyan')
+        plt.fill_between(x, test_accuracy_mean - test_accuracy_std,
                          test_accuracy_mean + test_accuracy_std, alpha=0.3, color='darkorchid')
-        plt.plot(range(len(train_accuracy_mean)),
-                 train_accuracy_mean, label='train_acc')
-        plt.plot(range(len(test_accuracy_mean)),
-                 test_accuracy_mean, label='eval_acc')
+        plt.plot(x, train_accuracy_mean, label='train_acc')
+        plt.plot(x, test_accuracy_mean, label='eval_acc')
         plt.legend()
-        plt.grid(visible=True)
+        plt.grid(visible=True, markevery=1)
         plt.xlabel('Epoch')
         plt.title('Learning Curve')
     else:
@@ -58,14 +56,14 @@ def plot_learning_curves(train_losses, train_accuracies, eval_losses, eval_accur
         fig.tight_layout(pad=1.1, rect=(0.9, 1, 0.9, 1))
 
         plt.subplot(1, 2, 1)
-        plt.plot(train_loss_mean, label='train_loss')
-        plt.plot(test_loss_mean, label='eval_loss')
+        plt.plot(x, train_loss_mean, label='train_loss')
+        plt.plot(x, test_loss_mean, label='eval_loss')
         plt.legend()
         plt.grid(visible=True)
         plt.title('Loss')
         plt.subplot(1, 2, 2)
-        plt.plot(train_accuracy_mean, label='train_acc')
-        plt.plot(test_accuracy_mean, label='eval_acc')
+        plt.plot(x, train_accuracy_mean, label='train_acc')
+        plt.plot(x, test_accuracy_mean, label='eval_acc')
         plt.legend()
         plt.grid(visible=True)
         plt.title('Accuracy')
@@ -108,7 +106,7 @@ def get_sa_model(input_dim, output_dim, num_epochs):
         module__hidden_units=10,
         module__hidden_layers=1,
         module__dropout_percent=0.,
-        module__t=1000.0,
+        module__t=5000.0,
         module__cooling=0.99,
         module__step_size=0.01,
         module__activation=nn.Tanh(),
