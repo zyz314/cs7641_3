@@ -27,26 +27,48 @@ import random
 from skorch.callbacks import EpochScoring, LRScheduler
 
 
-def plot_training_curves(train_losses, train_accuracies, eval_losses, eval_accuracies, plot_name='loss_curves.png'):
+def plot_learning_curves(train_losses, train_accuracies, eval_losses, eval_accuracies, plot_variance=False, plot_name='loss_curves.png'):
     """
     Plot the training loss and accuracy curves
     """
-    fig, _ = plt.subplots(nrows=1, ncols=2, sharex=True, figsize=(8, 6))
-    fig.supxlabel('Epoch')
-    fig.tight_layout(pad=1.1, rect=(0.9, 1, 0.9, 1))
+    train_accuracy_mean = np.asarray(train_accuracies).mean(axis=1)
+    train_accuracy_std = np.asarray(train_accuracies).std(axis=1)
+    test_accuracy_mean = np.asarray(eval_accuracies).mean(axis=1)
+    test_accuracy_std = np.asarray(eval_accuracies).std(axis=1)
+    train_loss_mean = np.asarray(train_losses).mean(axis=1)
+    test_loss_mean = np.asarray(eval_losses).mean(axis=1)
 
-    plt.subplot(1, 2, 1)
-    plt.plot(range(len(train_losses)), train_losses, label='train_loss')
-    plt.plot(range(len(eval_losses)), eval_losses, label='eval_loss')
-    plt.legend()
-    plt.grid(visible=True)
-    plt.title('Loss')
-    plt.subplot(1, 2, 2)
-    plt.plot(range(len(train_accuracies)), train_accuracies, label='train_acc')
-    plt.plot(range(len(eval_accuracies)), eval_accuracies, label='eval_acc')
-    plt.legend()
-    plt.grid(visible=True)
-    plt.title('Accuracy')
+    if plot_variance:
+        plt.fill_between(range(len(train_accuracies)), train_accuracy_mean - train_accuracy_std,
+                         train_accuracy_mean + train_accuracy_std, alpha=0.3,
+                         color='cyan')
+        plt.fill_between(range(len(eval_accuracies)), test_accuracy_mean - test_accuracy_std,
+                         test_accuracy_mean + test_accuracy_std, alpha=0.3, color='darkorchid')
+        plt.plot(range(len(train_accuracy_mean)),
+                 train_accuracy_mean, label='train_acc')
+        plt.plot(range(len(test_accuracy_mean)),
+                 test_accuracy_mean, label='eval_acc')
+        plt.legend()
+        plt.grid(visible=True)
+        plt.xlabel('Epoch')
+        plt.title('Learning Curve')
+    else:
+        fig, _ = plt.subplots(nrows=1, ncols=2, sharex=True, figsize=(8, 6))
+        fig.supxlabel('Epoch')
+        fig.tight_layout(pad=1.1, rect=(0.9, 1, 0.9, 1))
+
+        plt.subplot(1, 2, 1)
+        plt.plot(train_loss_mean, label='train_loss')
+        plt.plot(test_loss_mean, label='eval_loss')
+        plt.legend()
+        plt.grid(visible=True)
+        plt.title('Loss')
+        plt.subplot(1, 2, 2)
+        plt.plot(train_accuracy_mean, label='train_acc')
+        plt.plot(test_accuracy_mean, label='eval_acc')
+        plt.legend()
+        plt.grid(visible=True)
+        plt.title('Accuracy')
     plt.savefig(plot_name)
     plt.close()
 
@@ -83,16 +105,17 @@ def get_sa_model(input_dim, output_dim, num_epochs):
         module=SAModule,
         module__input_dim=input_dim,
         module__output_dim=output_dim,
-        module__hidden_layers=0,
+        module__hidden_units=10,
+        module__hidden_layers=1,
         module__dropout_percent=0.,
-        module__t=100000.0,
+        module__t=1000.0,
         module__cooling=0.99,
-        module__step_size=100.,
-        module__activation=nn.Identity(),
+        module__step_size=0.01,
+        module__activation=nn.Tanh(),
         train_split=ValidSplit(cv=3, stratified=True),
         criterion=nn.CrossEntropyLoss,
-        optimizer=optim.Adam,
-        optimizer__weight_decay=3.16227,
+        optimizer=optim.SGD,
+        optimizer__momentum=2e-4,
         max_epochs=num_epochs,
         batch_size=8,
         device='cuda' if torch.cuda.is_available() else 'cpu',
@@ -114,15 +137,17 @@ def get_rhc_model(input_dim, output_dim, num_epochs):
         module=RHCModule,
         module__input_dim=input_dim,
         module__output_dim=output_dim,
-        module__hidden_layers=0,
+        module__hidden_units=10,
+        module__hidden_layers=1,
         module__dropout_percent=0.,
-        module__step_size=316227.7660168379,
-        module__activation=nn.Identity(),
-        criterion=nn.CrossEntropyLoss(),
-        optimizer=optim.Adam,
-        optimizer__weight_decay=3.16227,
+        module__step_size=0.01,
+        module__activation=nn.Tanh(),
+        train_split=ValidSplit(cv=3, stratified=True),
+        criterion=nn.CrossEntropyLoss,
+        optimizer=optim.SGD,
+        optimizer__momentum=2e-4,
         max_epochs=num_epochs,
-        batch_size=32,
+        batch_size=8,
         device='cuda' if torch.cuda.is_available() else 'cpu',
         callbacks=[EpochScoring(
             scoring='accuracy', name='train_acc', on_train=True, lower_is_better=False),],
@@ -140,19 +165,20 @@ def get_ga_model(input_dim, output_dim, num_epochs):
         module=GAModule,
         module__input_dim=input_dim,
         module__output_dim=output_dim,
-        module__hidden_units=50,
+        module__hidden_units=10,
         module__hidden_layers=1,
         module__dropout_percent=0.,
         module__population_size=300,
         module__to_mate=150,
         module__to_mutate=30,
         module__step_size=0.1,
-        module__activation=nn.Identity(),
-        criterion=nn.CrossEntropyLoss(),
-        optimizer=optim.Adam,
-        optimizer__weight_decay=3.16227,
+        module__activation=nn.Tanh(),
+        train_split=ValidSplit(cv=3, stratified=True),
+        criterion=nn.CrossEntropyLoss,
+        optimizer=optim.SGD,
+        optimizer__momentum=2e-4,
         max_epochs=num_epochs,
-        batch_size=16,
+        batch_size=8,
         # device='cuda' if torch.cuda.is_available() else 'cpu',
         callbacks=[EpochScoring(
             scoring='accuracy', name='train_acc', on_train=True, lower_is_better=False),],
@@ -214,8 +240,7 @@ def train(dataset, model_generator, data_splits=[0.7, 0.3], use_pct=0.1, num_epo
             best_model = copy.deepcopy(model)
 
     print(f'Final accuracy {np.average(accs)}')
-    return (best_model, np.average(train_losses, axis=1), np.average(train_accs, axis=1),
-            np.average(valid_losses, axis=1), np.average(valid_accs, axis=1))
+    return (best_model, train_losses, train_accs, valid_losses, valid_accs)
 
 
 def param_search(dataset, model_generator, num_epochs=50, p_grid={}, n_splits=3, use_pct=0.3, test_size=0.3, n_jobs=-1, verbose=2):
@@ -272,9 +297,9 @@ def main():
 
     search = False
     use_pct = 0.2
-    models = [get_bp_model]
-    names = ['bp']
-    n_epochs = [150]
+    models = [get_sa_model]
+    names = ['sa']
+    n_epochs = [5]
 
     dataset = DryBeanDataset(transforms=nn.BatchNorm1d(num_features=16))
     for model, name, epoch_count in zip(models, names, n_epochs):
@@ -285,8 +310,8 @@ def main():
         else:
             _, train_losses, train_accuracies, eval_losses, eval_accuracies = train(dataset=dataset, model_generator=model,
                                                                                     use_pct=use_pct,
-                                                                                    num_epochs=epoch_count)
-            plot_training_curves(train_losses, train_accuracies, eval_losses, eval_accuracies,
+                                                                                    num_epochs=epoch_count, n_iterations=2)
+            plot_learning_curves(train_losses, train_accuracies, eval_losses, eval_accuracies,
                                  plot_name=os.path.join('checkpoints', f"drybean_{name}_loss_curves.png"))
 
 
