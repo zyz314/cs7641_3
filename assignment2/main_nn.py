@@ -56,15 +56,15 @@ def get_bp_model(input_dim, output_dim, num_epochs):
         module=BackpropModule,
         module__input_dim=input_dim,
         module__output_dim=output_dim,
-        module__hidden_layers=0,
+        module__hidden_units=10,
+        module__hidden_layers=1,
         module__dropout_percent=0.,
-        module__activation=nn.Identity(),
+        module__activation=nn.Tanh(),
         train_split=ValidSplit(cv=3, stratified=True),
         criterion=nn.CrossEntropyLoss,
-        optimizer=optim.Adam,
-        optimizer__weight_decay=3.16227,
-        # optimizer__momentum=0.31622776601683794,
-        lr=0.0017782794100389228,
+        optimizer=optim.SGD,
+        optimizer__momentum=2e-4,
+        lr=0.01,
         max_epochs=num_epochs,
         batch_size=8,
         device='cuda' if torch.cuda.is_available() else 'cpu',
@@ -188,12 +188,18 @@ def train(dataset, model_generator, data_splits=[0.7, 0.3], use_pct=0.1, num_epo
                                    dataset.get_num_classes(), num_epochs)
         model.set_params(verbose=1)
 
-        X, y = train_dataset[:]
-        X, y = X.numpy(), y.numpy()
+        try:
+            X, y = train_dataset[:]
+            X, y = X.numpy(), y.numpy()
+        except:
+            X, y = X.detach().numpy(), y.detach().numpy()
         model.fit(X, y)
 
-        X, y = test_dataset[:]
-        X, y = X.numpy(), y.numpy()
+        try:
+            X, y = test_dataset[:]
+            X, y = X.numpy(), y.numpy()
+        except:
+            X, y = X.detach().numpy(), y.detach().numpy()
         pred = model.predict(X)
         acc = accuracy_score(y, pred)
 
@@ -260,17 +266,17 @@ def main():
     if not os.path.exists('checkpoints'):
         os.makedirs('checkpoints')
 
-    models = [get_bp_model, get_sa_model, get_rhc_model, get_ga_model]
-    names = ['bp', 'sa', 'rhc', 'ga']
-    n_epochs = [50, 50, 50, 50]
+    # models = [get_bp_model, get_sa_model, get_rhc_model, get_ga_model]
+    # names = ['bp', 'sa', 'rhc', 'ga']
+    # n_epochs = [50, 50, 50, 50]
 
-    search = True
-    use_pct = 0.3
-    # models = [get_sa_model]
-    # names = ['sa']
-    # n_epochs = [15]
+    search = False
+    use_pct = 0.2
+    models = [get_bp_model]
+    names = ['bp']
+    n_epochs = [150]
 
-    dataset = DryBeanDataset()
+    dataset = DryBeanDataset(transforms=nn.BatchNorm1d(num_features=16))
     for model, name, epoch_count in zip(models, names, n_epochs):
         set_seed()
         if search:
