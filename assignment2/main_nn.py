@@ -23,23 +23,53 @@ from skorch.dataset import unpack_data
 import copy
 import matplotlib.pyplot as plt
 import random
+from time import time
 
 from skorch.callbacks import EpochScoring, LRScheduler
+
+
+def plot_timing(timings, plot_name='timings.png'):
+    labels = ['Time per Run', 'Time per Epoch']
+    x = np.arange(len(labels))
+    width = 0.1
+    multiplier = 0
+
+    _, ax = plt.subplots(layout='constrained')
+    for name, value in timings.items():
+        timings_item, _, epoch_count = value
+        timing_avg = np.mean(timings_item)
+        timing_std = np.std(timings_item)
+        timing_epoch_avg = np.mean(np.asarray(timings_item) / epoch_count)
+        timing_epoch_std = np.std(np.asarray(timings_item) / epoch_count)
+        offset = width * multiplier
+        rects = ax.bar(x + offset, (timing_avg, timing_epoch_avg), width,
+                       label=name, yerr=(timing_std, timing_epoch_std), ecolor='black')
+        ax.bar_label(rects, fmt='%.2f', label_type='center', padding=1)
+        multiplier += 1
+
+    ax.set_ylabel('Time (sec)')
+    ax.set_xlabel('Timing')
+    ax.set_xticks(x + (1.5 * width), labels)
+    ax.set_title('Avg. Timings by Algorithms')
+    ax.legend()
+    ax.autoscale_view()
+    plt.savefig(plot_name)
+    plt.close()
 
 
 def plot_learning_curves(train_losses, train_accuracies, eval_losses, eval_accuracies, plot_variance=False, plot_name='loss_curves.png'):
     """
     Plot the training loss and accuracy curves
     """
-    train_accuracy_mean = np.asarray(train_accuracies).mean(axis=1)
-    train_accuracy_std = np.asarray(train_accuracies).std(axis=1)
-    test_accuracy_mean = np.asarray(eval_accuracies).mean(axis=1)
-    test_accuracy_std = np.asarray(eval_accuracies).std(axis=1)
-    train_loss_mean = np.asarray(train_losses).mean(axis=1)
-    test_loss_mean = np.asarray(eval_losses).mean(axis=1)
-    x = np.arange(len(train_accuracies))
+    train_accuracy_mean = np.asarray(train_accuracies).mean(axis=0)
+    train_accuracy_std = np.asarray(train_accuracies).std(axis=0)
+    test_accuracy_mean = np.asarray(eval_accuracies).mean(axis=0)
+    test_accuracy_std = np.asarray(eval_accuracies).std(axis=0)
+    train_loss_mean = np.asarray(train_losses).mean(axis=0)
+    test_loss_mean = np.asarray(eval_losses).mean(axis=0)
+    x = np.arange(np.asarray(train_accuracies).shape[1])
 
-    if plot_variance:        
+    if plot_variance:
         plt.fill_between(x, train_accuracy_mean - train_accuracy_std,
                          train_accuracy_mean + train_accuracy_std, alpha=0.3, color='cyan')
         plt.fill_between(x, test_accuracy_mean - test_accuracy_std,
@@ -203,6 +233,7 @@ def train(dataset, model_generator, data_splits=[0.7, 0.3], use_pct=0.1, num_epo
     valid_losses = []
     valid_accs = []
     accs = []
+    time_iteration = []
 
     useset, _ = random_split(dataset, [use_pct, 1.0 - use_pct])
     for _ in range(n_iterations):
@@ -217,7 +248,10 @@ def train(dataset, model_generator, data_splits=[0.7, 0.3], use_pct=0.1, num_epo
             X, y = X.numpy(), y.numpy()
         except:
             X, y = X.detach().numpy(), y.detach().numpy()
+
+        start_time = time()
         model.fit(X, y)
+        time_iteration.append(time() - start_time)
 
         try:
             X, y = test_dataset[:]
@@ -238,7 +272,7 @@ def train(dataset, model_generator, data_splits=[0.7, 0.3], use_pct=0.1, num_epo
             best_model = copy.deepcopy(model)
 
     print(f'Final accuracy {np.average(accs)}')
-    return (best_model, train_losses, train_accs, valid_losses, valid_accs)
+    return (best_model, train_losses, train_accs, valid_losses, valid_accs, time_iteration)
 
 
 def param_search(dataset, model_generator, num_epochs=50, p_grid={}, n_splits=3, use_pct=0.3, test_size=0.3, n_jobs=-1, verbose=2):
@@ -290,13 +324,17 @@ def main():
         os.makedirs('checkpoints')
 
     # models = [get_bp_model, get_sa_model, get_rhc_model, get_ga_model]
-    # names = ['bp', 'sa', 'rhc', 'ga']
-    # n_epochs = [50, 50, 50, 50]
+    # names = ['BP', 'SA', 'RHC', 'GA']
+    # n_epochs = [200, 200, 200, 200]
 
     search = False
     use_pct = 0.2
+    models = [get_bp_model, get_rhc_model, get_sa_model]
+    names = ['BP', 'RHC', 'SA']
+    n_epochs = [3, 3, 3]
     n_iterations = 2
 
+    timing = {}
     dataset = DryBeanDataset(transforms=nn.BatchNorm1d(num_features=16))
     for model, name, epoch_count in zip(models, names, n_epochs):
         set_seed()
@@ -305,14 +343,21 @@ def main():
                              use_pct=use_pct, num_epochs=epoch_count)
         else:
             start_time = time()
-            _, train_losses, train_accuracies, eval_losses, eval_accuracies = train(dataset=dataset, model_generator=model,
-                                                                                    use_pct=use_pct,
-                                                                                    num_epochs=epoch_count, n_iterations=n_iterations)
-            print(f"Algorithm {name} took {time() - start_time} sec for {epoch_count * n_iterations} iterations")
+            _, train_losses, train_accuracies, eval_losses, eval_accuracies, time_iteration = train(dataset=dataset, model_generator=model,
+                                                                                                    use_pct=use_pct,
+                                                                                                    num_epochs=epoch_count, n_iterations=n_iterations)
+            elapsed = time() - start_time
+            total_epoch_count = epoch_count * n_iterations
+            time_per_iter = elapsed / n_iterations
+            time_per_epoch = elapsed / total_epoch_count
+            timing[name] = (time_iteration, n_iterations, epoch_count)
+            print(f"Algorithm {name} took {elapsed} sec for {n_iterations} iterations, {total_epoch_count} epochs, {time_per_iter} sec/iter, {time_per_epoch} sec/epoch")
             plot_learning_curves(train_losses, train_accuracies, eval_losses, eval_accuracies,
                                  plot_name=os.path.join('checkpoints', f"drybean_{name}_loss_curves.png"), plot_variance=False)
             plot_learning_curves(train_losses, train_accuracies, eval_losses, eval_accuracies,
                                  plot_name=os.path.join('checkpoints', f"drybean_{name}_learning_curves.png"), plot_variance=True)
+    plot_timing(timing, plot_name=os.path.join(
+        'checkpoints', f"drybean_timings.png"))
 
 
 if __name__ == '__main__':
