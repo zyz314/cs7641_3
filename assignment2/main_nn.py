@@ -47,8 +47,8 @@ def plot_timing(timings, plot_name='timings.png'):
         ax.bar_label(rects, fmt='%.2f', label_type='center', padding=1)
         multiplier += 1
 
+    ax.grid(visible=True, axis='y')
     ax.set_ylabel('Time (sec)')
-    ax.set_xlabel('Timing')
     ax.set_xticks(x + (1.5 * width), labels)
     ax.set_title('Avg. Timings by Algorithms')
     ax.legend()
