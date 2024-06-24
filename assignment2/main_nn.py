@@ -196,9 +196,9 @@ def get_ga_model(input_dim, output_dim, num_epochs):
         module__hidden_units=10,
         module__hidden_layers=1,
         module__dropout_percent=0.,
-        module__population_size=300,
-        module__to_mate=150,
-        module__to_mutate=30,
+        module__population_size=25,
+        module__to_mate=10,
+        module__to_mutate=5,
         module__step_size=0.1,
         module__activation=nn.Tanh(),
         train_split=ValidSplit(cv=3, stratified=True),
@@ -329,9 +329,9 @@ def main():
 
     search = False
     use_pct = 0.2
-    models = [get_bp_model, get_rhc_model, get_sa_model]
-    names = ['BP', 'RHC', 'SA']
-    n_epochs = [3, 3, 3]
+    models = [get_ga_model]
+    names = ['GA']
+    n_epochs = [3]
     n_iterations = 2
 
     timing = {}
